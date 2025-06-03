@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F0F0F0">
+
+    <!-- Thanh tiêu đề -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/top_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#ffffff"
+        android:paddingVertical="16dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:background="@null"
+            android:contentDescription="TODO"
+            android:src="@drawable/ie_ic_back"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/btn_undo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:background="@null"
+            android:contentDescription="TODO"
+            android:src="@drawable/ie_ic_undo"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btn_back"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/btn_redo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:background="@null"
+            android:contentDescription="TODO"
+            android:src="@drawable/ie_ic_redo"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@id/btn_undo"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/btn_save_draft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save draft"
+            android:textColor="#4CAF50"
+            android:layout_marginHorizontal="16dp"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/btn_next"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_next"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:backgroundTint="#4CAF50"
+            android:paddingHorizontal="24dp"
+            android:text="Next"
+            android:textColor="#FFFFFF"
+            app:cornerRadius="24dp"
+            app:icon="@drawable/ic_arrow_right"
+            app:iconGravity="end"
+            app:iconTint="#FFFFFF"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- StickerView canvas để thêm/kéo thả text & hình ảnh -->
+    <com.xiaopo.flying.sticker.StickerView
+        android:id="@+id/sticker_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#00FFFFFF"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginVertical="16dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_container"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/top_bar" />
+
+    <!-- Container dưới cùng bao gồm nút RSVP và thanh công cụ chỉnh sửa -->
+    <LinearLayout
+        android:id="@+id/bottom_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end|center_vertical">
+            <!-- Nút Create RSVP -->
+<!--            <com.google.android.material.button.MaterialButton-->
+<!--                android:id="@+id/btn_create_rsvp"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginHorizontal="16dp"-->
+<!--                android:backgroundTint="#FFFFFF"-->
+<!--                android:drawableStart="@drawable/letter"-->
+<!--                android:drawablePadding="8dp"-->
+<!--                android:paddingHorizontal="16dp"-->
+<!--                android:text="Create RSVP"-->
+<!--                android:textColor="#000000"-->
+<!--                app:cornerRadius="24dp" />-->
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="16dp"
+                android:backgroundTint="#4CAF50"
+                android:text=""
+                app:cornerRadius="24dp"
+                app:icon="@drawable/plus"
+                app:iconTint="#FFFFFF"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                android:contentDescription="Add" />
+        </LinearLayout>
+
+        <!-- Container cho các công cụ chỉnh sửa -->
+        <FrameLayout
+            android:id="@+id/edit_tools_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#FFFFFF"
+            android:visibility="visible">
+
+            <!-- Công cụ chỉnh sửa text -->
+            <HorizontalScrollView
+                android:id="@+id/text_tools_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageButton
+                        android:id="@+id/btn_delete_text"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:src="@drawable/ic_delete" />
+
+                    <TextView
+                        android:id="@+id/btn_edit_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Edit Text"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/btn_font"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Font"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/btn_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Size"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <ImageButton
+                        android:id="@+id/btn_color"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_select_color" />
+
+                    <TextView
+                        android:id="@+id/btn_Bold"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:textStyle="bold"
+                        android:text="B"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/btn_Italic"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:textStyle="italic"
+                        android:text="I"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+                    <ImageButton
+                        android:id="@+id/btn_gravityHorizontal"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/align_text_3" />
+                    <ImageButton
+                        android:id="@+id/btn_editTextHeight"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_edit_height" />
+                    <ImageButton
+                        android:id="@+id/btn_eidtTextWidth"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_edit_width" />
+                    <TextView
+                        android:id="@+id/btn_Uppercase"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Aa"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+                    <ImageButton
+                        android:id="@+id/btn_editCurvedText"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/curved_text" />
+                    <ImageButton
+                        android:id="@+id/btn_duplicateText"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/duplicate" />
+                </LinearLayout>
+            </HorizontalScrollView>
+
+            <!-- Công cụ chỉnh sửa hình ảnh -->
+            <HorizontalScrollView
+                android:id="@+id/image_tools_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageButton
+                        android:id="@+id/btn_delete_image"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:src="@drawable/ic_delete" />
+
+                    <TextView
+                        android:id="@+id/btn_zoomImage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Zoom"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/btn_filterImage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Filters"
+                        android:textColor="#000000"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/btn_removeBackgroundImage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:paddingHorizontal="16dp"
+                        android:text="Remove Background"
+                        android:textColor="#b34fd3"
+                        android:textSize="16sp" />
+
+                    <ImageButton
+                        android:id="@+id/btn_flipImage"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/flip_image" />
+                    <ImageButton
+                        android:id="@+id/btn_rotateImage"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="TODO"
+                        android:padding="12dp"
+                        android:src="@drawable/rotate_image" />
+                </LinearLayout>
+            </HorizontalScrollView>
+        </FrameLayout>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
