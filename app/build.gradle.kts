@@ -50,4 +50,8 @@ dependencies {
 
 //    implementation ("androidx.annotation:annotation:1.7.1")
 //    implementation ("androidx.legacy:legacy-support-v4:1.0.0")
+
+    // For downloading fonts
+    implementation ("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }

@@ -34,6 +34,8 @@ class TextEditorActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_text_editor)
+
+        // Thiết lập chế độ hiển thị bàn phím
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
 
         rootView = findViewById(R.id.main)
@@ -44,7 +46,6 @@ class TextEditorActivity : AppCompatActivity() {
             insets
         }
 
-        // Khởi tạo các view
         textEditor = findViewById(R.id.text_editor)
         btnCancel = findViewById(R.id.btn_cancel)
         btnClear = findViewById(R.id.btn_clear)

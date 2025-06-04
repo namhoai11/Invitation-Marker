@@ -24,15 +24,22 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.invitationcard.R
+import com.example.invitationcard.model.FontItem
+import com.example.invitationcard.utils.FontManager
 import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.StickerView
 import com.xiaopo.flying.sticker.TextSticker
+import kotlinx.coroutines.launch
 
 class InvitationEditActivity : AppCompatActivity() {
 
     private lateinit var stickerView: StickerView
     private lateinit var mainContainer: View
+
+    private lateinit var fontManager: FontManager
+    private var currentSelectedFont: FontItem? = null
 
     companion object {
         private const val REQUEST_EDIT_TEXT = 1001
@@ -77,6 +84,8 @@ class InvitationEditActivity : AppCompatActivity() {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+
+        fontManager = FontManager(this)
 
         // Xử lý sự kiện khi tap vào không gian trống
         setupBackgroundTouchListener()
@@ -186,6 +195,14 @@ class InvitationEditActivity : AppCompatActivity() {
             if (currentSticker != null) {
                 stickerView.remove(currentSticker)
                 hideAllEditTools()
+            }
+        }
+
+        // Xử lý nút Font
+        findViewById<TextView>(R.id.btn_font)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is TextSticker) {
+                showFontSelectionBottomSheet(currentSticker)
             }
         }
 
@@ -322,5 +339,36 @@ class InvitationEditActivity : AppCompatActivity() {
     private fun hideAllEditTools() {
         val editToolsContainer = findViewById<FrameLayout>(R.id.edit_tools_container)
         editToolsContainer.visibility = View.GONE
+    }
+    private fun showFontSelectionBottomSheet(textSticker: TextSticker) {
+        // Get current font of the text sticker
+        val currentFont = currentSelectedFont ?: FontItem("Default", "default", "System", isSystemFont = true)
+
+        val bottomSheet = FontSelectionBottomSheet.newInstance(currentFont)
+        bottomSheet.setOnFontSelectedListener { selectedFont ->
+            applyFontToSticker(textSticker, selectedFont)
+        }
+        bottomSheet.show(supportFragmentManager, "FontSelectionBottomSheet")
+    }
+
+    private fun applyFontToSticker(textSticker: TextSticker, fontItem: FontItem) {
+        lifecycleScope.launch {
+            // Load font if needed
+            val typeface = if (fontItem.typeface != null) {
+                fontItem.typeface
+            } else {
+                fontManager.loadFont(fontItem)
+            }
+
+            // Apply font on main thread
+            runOnUiThread {
+                typeface?.let { tf ->
+                    textSticker.setTypeface(tf)
+                    textSticker.resizeText()
+                    stickerView.invalidate()
+                    currentSelectedFont = fontItem
+                }
+            }
+        }
     }
 }
