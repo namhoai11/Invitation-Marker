@@ -69,7 +69,6 @@ class InvitationEditActivity : AppCompatActivity() {
             field.isAccessible = true
             field.setBoolean(stickerView, true)
 
-            // Tùy chọn: Thay đổi màu viền nếu muốn
             val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
             borderPaintField.isAccessible = true
             val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint

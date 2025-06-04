@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.MotionEvent
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
@@ -33,6 +34,7 @@ class TextEditorActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_text_editor)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
 
         rootView = findViewById(R.id.main)
 
@@ -48,33 +50,23 @@ class TextEditorActivity : AppCompatActivity() {
         btnClear = findViewById(R.id.btn_clear)
         btnUpdate = findViewById(R.id.btn_update)
 
+//        // Đặt background mặc định (tùy chọn)
+//        textEditor.background = ContextCompat.getDrawable(this, R.drawable.text_editor_background)
 
-        val drawable = ContextCompat.getDrawable(this, R.drawable.text_editor_background_selected)
-        textEditor.background = drawable
+        textEditor.setOnFocusChangeListener { v, hasFocus ->
+            val drawableRes = if (hasFocus) R.drawable.text_editor_background_selected else R.drawable.text_editor_background
+            v.background = ContextCompat.getDrawable(this, drawableRes)
+        }
 
         val text = intent.getStringExtra(EXTRA_TEXT) ?: ""
-        if (text == "Enter text..."){
+        if (text == "Enter text...") {
             textEditor.hint = text
         } else {
             textEditor.setText(text)
+            textEditor.selectAll()
         }
 
-
-
-
-        // Focus vào EditText và hiển thị bàn phím
         textEditor.requestFocus()
-//        textEditor.setOnFocusChangeListener { _, hasFocus ->
-//            if (hasFocus) {
-//                val drawable = ContextCompat.getDrawable(this, R.drawable.text_editor_background_selected)
-//                textEditor.background = drawable
-//            } else {
-//                val drawable = ContextCompat.getDrawable(this, R.drawable.text_editor_background)
-//                textEditor.background = drawable
-//            }
-//        }
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(textEditor, InputMethodManager.SHOW_IMPLICIT)
 
         btnCancel.setOnClickListener {
             setResult(Activity.RESULT_CANCELED)
@@ -94,7 +86,6 @@ class TextEditorActivity : AppCompatActivity() {
             finish()
         }
 
-        // Thiết lập xử lý click ra ngoài để mất focus
         setupTouchListener()
     }
 
@@ -102,25 +93,16 @@ class TextEditorActivity : AppCompatActivity() {
     private fun setupTouchListener() {
         rootView.setOnTouchListener { v, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
-                // Kiểm tra xem touch có vào EditText không
                 if (isTouchOutsideEditText(event.rawX.toInt(), event.rawY.toInt())) {
-                    // Click ra ngoài EditText -> clear focus và ẩn bàn phím
                     clearFocusAndHideKeyboard()
-                    val drawable = ContextCompat.getDrawable(this, R.drawable.text_editor_background)
-                    textEditor.background = drawable
                     return@setOnTouchListener true
                 }
             }
             false
         }
 
-        // Đảm bảo EditText vẫn nhận được touch event và focus
         textEditor.setOnTouchListener { v, event ->
-            v.performClick() // Cần thiết để tránh warning từ lint
-            // Đảm bảo sự kiện được xử lý bởi EditText
-            val drawable = ContextCompat.getDrawable(this, R.drawable.text_editor_background_selected)
-            textEditor.background = drawable
-
+            v.performClick()
             v.onTouchEvent(event)
         }
     }
@@ -128,12 +110,10 @@ class TextEditorActivity : AppCompatActivity() {
     private fun isTouchOutsideEditText(x: Int, y: Int): Boolean {
         val location = IntArray(2)
         textEditor.getLocationOnScreen(location)
-
         val left = location[0]
         val top = location[1]
         val right = left + textEditor.width
         val bottom = top + textEditor.height
-
         return x < left || x > right || y < top || y > bottom
     }
 
