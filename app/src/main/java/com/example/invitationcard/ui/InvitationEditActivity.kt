@@ -1,20 +1,25 @@
 package com.example.invitationcard.ui
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.InputType
 import android.text.Layout
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
+import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -29,6 +34,10 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var stickerView: StickerView
     private lateinit var mainContainer: View
 
+    companion object {
+        private const val REQUEST_EDIT_TEXT = 1001
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -37,7 +46,6 @@ class InvitationEditActivity : AppCompatActivity() {
         stickerView = findViewById(R.id.sticker_view)
         mainContainer = findViewById(R.id.main)
 
-        // Áp dụng padding cho hệ thống insets (status bar, navigation bar)
         ViewCompat.setOnApplyWindowInsetsListener(mainContainer) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
@@ -73,6 +81,9 @@ class InvitationEditActivity : AppCompatActivity() {
 
         // Xử lý sự kiện khi tap vào không gian trống
         setupBackgroundTouchListener()
+
+        // Thiết lập xử lý cho các nút công cụ text
+        setupTextEditingTools()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -155,10 +166,31 @@ class InvitationEditActivity : AppCompatActivity() {
             override fun onStickerDoubleTapped(sticker: Sticker) {
                 // Khi double tap vào text sticker, hiện dialog chỉnh sửa
                 if (sticker is TextSticker) {
-                    showEditTextDialog(sticker)
+                    showTextEditor(sticker) // Thay vì showEditTextDialog
                 }
             }
         })
+    }
+
+    private fun setupTextEditingTools() {
+        // Xử lý nút Edit Text
+        findViewById<TextView>(R.id.btn_edit_text)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is TextSticker) {
+                showTextEditor(currentSticker)
+            }
+        }
+
+        // Xử lý nút Delete Text
+        findViewById<ImageButton>(R.id.btn_delete_text)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null) {
+                stickerView.remove(currentSticker)
+                hideAllEditTools()
+            }
+        }
+
+        // Các nút khác có thể triển khai sau khi cần thiết
     }
 
     private fun showAddItemDialog() {
@@ -196,6 +228,44 @@ class InvitationEditActivity : AppCompatActivity() {
     private fun addText() {
         // Tạo trực tiếp text sticker với nội dung placeholder
         createTextSticker("Enter text...")
+    }
+
+    private fun showTextEditor(textSticker: TextSticker) {
+        val intent = Intent(this, TextEditorActivity::class.java).apply {
+            putExtra(TextEditorActivity.EXTRA_TEXT, textSticker.text)
+        }
+        startActivityForResult(intent, REQUEST_EDIT_TEXT)
+    }
+
+    // Xử lý kết quả trả về từ TextEditorActivity
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_EDIT_TEXT && resultCode == Activity.RESULT_OK) {
+            val resultText = data?.getStringExtra(TextEditorActivity.RESULT_TEXT)
+            Log.d("InvitationEditActivity", "Result text: $resultText")
+            if (resultText != null) {
+                val currentSticker = getCurrentSticker()
+                if (currentSticker is TextSticker) {
+                    currentSticker.setText(resultText)
+                    currentSticker.resizeText()
+                    Log.d("InvitationEditActivity", "Updated text: ${currentSticker.text}")
+                    stickerView.invalidate()
+                }
+            }
+        }
+    }
+
+    // Phương thức lấy sticker hiện tại đang được chọn
+    private fun getCurrentSticker(): Sticker? {
+        try {
+            val field = StickerView::class.java.getDeclaredField("handlingSticker")
+            field.isAccessible = true
+            return field.get(stickerView) as? Sticker
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return null
     }
 
     private fun showEditTextDialog(textSticker: TextSticker) {

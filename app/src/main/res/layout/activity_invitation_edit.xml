@@ -96,13 +96,25 @@
         android:id="@+id/sticker_view"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:background="#00FFFFFF"
+        android:background="#FFFFFFFF"
         android:layout_marginHorizontal="16dp"
         android:layout_marginVertical="16dp"
         app:layout_constraintBottom_toTopOf="@+id/guideline_bottom"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/top_bar" />
+
+
+    <!-- BorderOverlayView (đặt full màn hình để vẽ viền không bị giới hạn) -->
+<!--    <com.example.invitationcard.component.BorderOverlayView-->
+<!--        android:id="@+id/border_overlay"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="0dp"-->
+<!--        android:background="@android:color/transparent"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent" />-->
 
     <!-- Container dưới cùng bao gồm nút RSVP và thanh công cụ chỉnh sửa -->
     <LinearLayout
