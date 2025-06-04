@@ -37,6 +37,8 @@ android {
 
 dependencies {
 
+    implementation(project(":sticker"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -45,5 +47,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("com.github.wuapnjie:StickerView:4a82f82fba")
+
+//    implementation ("androidx.annotation:annotation:1.7.1")
+//    implementation ("androidx.legacy:legacy-support-v4:1.0.0")
 }
