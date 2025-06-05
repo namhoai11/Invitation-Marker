@@ -92,7 +92,7 @@ class TextEditorActivity : AppCompatActivity() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupTouchListener() {
-        rootView.setOnTouchListener { v, event ->
+        rootView.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
                 if (isTouchOutsideEditText(event.rawX.toInt(), event.rawY.toInt())) {
                     clearFocusAndHideKeyboard()

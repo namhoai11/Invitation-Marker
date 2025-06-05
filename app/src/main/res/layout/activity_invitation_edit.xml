@@ -146,11 +146,12 @@
         </LinearLayout>
 
         <!-- Container cho các công cụ chỉnh sửa -->
-        <FrameLayout
+        <LinearLayout
             android:id="@+id/edit_tools_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="#FFFFFF"
+            android:orientation="vertical"
             android:visibility="gone">
 
             <!-- Công cụ chỉnh sửa text -->
@@ -287,6 +288,14 @@
                 </LinearLayout>
             </HorizontalScrollView>
 
+            <!-- Font Size Control -->
+            <include
+                android:id="@+id/font_size_control"
+                layout="@layout/font_size_control"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
             <!-- Công cụ chỉnh sửa hình ảnh -->
             <HorizontalScrollView
                 android:id="@+id/image_tools_container"
@@ -356,6 +365,6 @@
                         android:src="@drawable/rotate_image" />
                 </LinearLayout>
             </HorizontalScrollView>
-        </FrameLayout>
+        </LinearLayout>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

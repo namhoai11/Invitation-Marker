@@ -6,16 +6,17 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.InputType
 import android.text.Layout
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
-import android.widget.FrameLayout
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -27,11 +28,13 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.invitationcard.R
 import com.example.invitationcard.model.FontItem
+import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
 import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.StickerView
 import com.xiaopo.flying.sticker.TextSticker
 import kotlinx.coroutines.launch
+import java.lang.reflect.Method
 
 class InvitationEditActivity : AppCompatActivity() {
 
@@ -40,6 +43,30 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private lateinit var fontManager: FontManager
     private var currentSelectedFont: FontItem? = null
+
+
+    private lateinit var fontSizeController: FontSizeController
+    private var isSizeControlVisible = false
+
+
+    // Store current text properties
+    private data class TextProperties(
+        val text: String,
+        val color: Int,
+        val alignment: Layout.Alignment,
+        val sizeInSp: Int = 30
+    )
+
+    private var baseTextSize = 30f
+    private var currentScale = 1.0f
+
+    private var currentDisplayedSize = 30
+    private var debugDone = false
+    private var textSizeMethod: Method? = null
+    private var currentTextContent = "Enter text..."
+    private var currentTextColor = android.graphics.Color.GRAY
+
+    private var currentTextProperties: TextProperties? = null
 
     companion object {
         private const val REQUEST_EDIT_TEXT = 1001
@@ -64,10 +91,7 @@ class InvitationEditActivity : AppCompatActivity() {
             showAddItemDialog()
         }
 
-        // Thiết lập listener cho StickerView
         setupStickerViewListeners()
-
-        // Đảm bảo StickerView không bị khóa và hiển thị viền
         stickerView.setLocked(false)
 
         // QUAN TRỌNG: Đặt showBorder = true bằng phản chiếu (reflection)
@@ -81,17 +105,52 @@ class InvitationEditActivity : AppCompatActivity() {
             val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
             borderPaint.color = Color.GREEN
             borderPaint.alpha = 255
+            borderPaint.strokeWidth = 8f
         } catch (e: Exception) {
             e.printStackTrace()
         }
 
         fontManager = FontManager(this)
-
-        // Xử lý sự kiện khi tap vào không gian trống
+        setupFontSizeController()
         setupBackgroundTouchListener()
-
-        // Thiết lập xử lý cho các nút công cụ text
         setupTextEditingTools()
+    }
+
+    private fun setupDynamicBorder() {
+        try {
+            // Enable border display
+            val showBorderField = StickerView::class.java.getDeclaredField("showBorder")
+            showBorderField.isAccessible = true
+            showBorderField.setBoolean(stickerView, true)
+
+            // Customize border paint for better visibility
+            val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
+            borderPaintField.isAccessible = true
+            val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
+
+            borderPaint.apply {
+                color = Color.parseColor("#2196F3") // Blue color
+                strokeWidth = 2f
+                style = android.graphics.Paint.Style.STROKE
+                alpha = 180
+                // Remove dash effect for cleaner look
+                pathEffect = null
+            }
+
+            // Customize icon paint if exists
+            try {
+                val iconPaintField = StickerView::class.java.getDeclaredField("iconPaint")
+                iconPaintField.isAccessible = true
+                val iconPaint = iconPaintField.get(stickerView) as android.graphics.Paint
+                iconPaint.alpha = 200
+            } catch (e: Exception) {
+                Log.d("InvitationEditActivity", "No iconPaint field found")
+            }
+
+            Log.d("InvitationEditActivity", "Dynamic border setup completed")
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error setting up dynamic border", e)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -113,15 +172,11 @@ class InvitationEditActivity : AppCompatActivity() {
     // Phương thức để bỏ chọn sticker hiện tại
     private fun unselectCurrentSticker() {
         try {
-            // Sử dụng reflection để đặt handlingSticker = null
             val field = StickerView::class.java.getDeclaredField("handlingSticker")
             field.isAccessible = true
             field.set(stickerView, null)
 
-            // Ẩn edit tools
             hideAllEditTools()
-
-            // Vẽ lại view
             stickerView.invalidate()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -131,57 +186,55 @@ class InvitationEditActivity : AppCompatActivity() {
     private fun setupStickerViewListeners() {
         stickerView.setOnStickerOperationListener(object : StickerView.OnStickerOperationListener {
             override fun onStickerAdded(sticker: Sticker) {
-                // Hiện toolbar tương ứng khi thêm sticker
                 if (sticker is TextSticker) {
                     showTextEditTools()
                 }
-                // Đảm bảo sticker được vẽ với viền
                 stickerView.invalidate()
             }
 
             override fun onStickerClicked(sticker: Sticker) {
-                // Hiện toolbar tương ứng khi chọn sticker
                 if (sticker is TextSticker) {
                     showTextEditTools()
+                    // Update size controller with current size
+                    updateSizeControllerFromSticker(sticker)
                 }
-                // Đảm bảo sticker được vẽ với viền
                 stickerView.invalidate()
             }
 
             override fun onStickerDeleted(sticker: Sticker) {
-                // Ẩn toolbar nếu không còn sticker nào
                 if (stickerView.stickerCount == 0) {
                     hideAllEditTools()
                 }
             }
 
             override fun onStickerDragFinished(sticker: Sticker) {
-                // Xử lý khi kéo sticker xong
+                // Handle drag finished
             }
 
             override fun onStickerTouchedDown(sticker: Sticker) {
-                // Xử lý khi bắt đầu chạm vào sticker
+                // Handle touch down
             }
 
             override fun onStickerZoomFinished(sticker: Sticker) {
-                // Xử lý khi zoom sticker xong
+                // QUAN TRỌNG: Update size controller khi zoom finished
+                if (sticker is FlexibleTextSticker && isSizeControlVisible) {
+                    updateSizeControllerFromSticker(sticker)
+                }
             }
 
             override fun onStickerFlipped(sticker: Sticker) {
-                // Xử lý khi flip sticker
+                // Handle flip
             }
 
             override fun onStickerDoubleTapped(sticker: Sticker) {
-                // Khi double tap vào text sticker, hiện dialog chỉnh sửa
                 if (sticker is TextSticker) {
-                    showTextEditor(sticker) // Thay vì showEditTextDialog
+                    showTextEditor(sticker)
                 }
             }
         })
     }
 
     private fun setupTextEditingTools() {
-        // Xử lý nút Edit Text
         findViewById<TextView>(R.id.btn_edit_text)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is TextSticker) {
@@ -189,7 +242,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút Delete Text
         findViewById<ImageButton>(R.id.btn_delete_text)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null) {
@@ -198,7 +250,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút Font
         findViewById<TextView>(R.id.btn_font)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is TextSticker) {
@@ -206,7 +257,13 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Các nút khác có thể triển khai sau khi cần thiết
+        findViewById<TextView>(R.id.btn_size)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is TextSticker) {
+                toggleSizeControl(currentSticker)
+            }
+        }
+
     }
 
     private fun showAddItemDialog() {
@@ -215,24 +272,20 @@ class InvitationEditActivity : AppCompatActivity() {
         dialog.setContentView(view)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // Sự kiện nút đóng dialog (X)
         view.findViewById<View>(R.id.btn_close).setOnClickListener {
             dialog.dismiss()
         }
 
-        // Sự kiện chọn Text
         view.findViewById<LinearLayout>(R.id.btn_add_text).setOnClickListener {
             dialog.dismiss()
             addText()
         }
 
-        // Sự kiện chọn Sticker (bổ sung sau)
         view.findViewById<LinearLayout>(R.id.btn_add_sticker).setOnClickListener {
             dialog.dismiss()
             // TODO: Hiển thị giao diện chọn sticker
         }
 
-        // Sự kiện chọn Image (bổ sung sau)
         view.findViewById<LinearLayout>(R.id.btn_add_image).setOnClickListener {
             dialog.dismiss()
             // TODO: Hiển thị giao diện chọn ảnh
@@ -242,7 +295,6 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun addText() {
-        // Tạo trực tiếp text sticker với nội dung placeholder
         createTextSticker("Enter text...")
     }
 
@@ -284,39 +336,18 @@ class InvitationEditActivity : AppCompatActivity() {
         return null
     }
 
-    private fun showEditTextDialog(textSticker: TextSticker) {
-        val builder = AlertDialog.Builder(this)
-        builder.setTitle("Chỉnh sửa văn bản")
-
-        val input = EditText(this)
-        input.inputType = InputType.TYPE_CLASS_TEXT
-        input.setText(textSticker.text)
-        builder.setView(input)
-
-        builder.setPositiveButton("OK") { _, _ ->
-            val text = input.text.toString()
-            if (text.isNotEmpty()) {
-                textSticker.setText(text)
-                textSticker.setTextColor(Color.BLACK)
-                stickerView.invalidate() // Cập nhật lại view
-            }
-        }
-
-        builder.setNegativeButton("Hủy") { dialog, _ ->
-            dialog.cancel()
-        }
-
-        builder.show()
+    private fun createTextSticker(text: String) {
+//        createTextStickerWithSize(text, 8, Color.GRAY)
+        createTextStickerFirst(text)
     }
 
-    private fun createTextSticker(text: String) {
-        val textSticker = TextSticker(this)
-        textSticker.apply {
+    private fun createTextStickerFirst(text: String) {
+        val textSticker = FlexibleTextSticker(this).apply {
             setText(text)
             setTextAlign(Layout.Alignment.ALIGN_CENTER)
             setTypeface(Typeface.DEFAULT)
             setTextColor(Color.GRAY)
-            resizeText()
+            setTextSizeSp(18) // Giảm kích thước mặc định xuống 18sp
         }
 
         // Thêm sticker vào StickerView
@@ -327,18 +358,27 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showTextEditTools() {
-        val editToolsContainer = findViewById<FrameLayout>(R.id.edit_tools_container)
+        val editToolsContainer = findViewById<LinearLayout>(R.id.edit_tools_container)
         val textToolsContainer = findViewById<HorizontalScrollView>(R.id.text_tools_container)
         val imageToolsContainer = findViewById<HorizontalScrollView>(R.id.image_tools_container)
 
         editToolsContainer.visibility = View.VISIBLE
         textToolsContainer.visibility = View.VISIBLE
         imageToolsContainer.visibility = View.GONE
+
+        // Hide size control when switching tools
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
     }
 
     private fun hideAllEditTools() {
-        val editToolsContainer = findViewById<FrameLayout>(R.id.edit_tools_container)
+        val editToolsContainer = findViewById<LinearLayout>(R.id.edit_tools_container)
         editToolsContainer.visibility = View.GONE
+        // Hide size control
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
     }
     private fun showFontSelectionBottomSheet(textSticker: TextSticker) {
         // Get current font of the text sticker
@@ -370,5 +410,117 @@ class InvitationEditActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun setupFontSizeController() {
+        val fontSizeControlView = findViewById<View>(R.id.font_size_control)
+        fontSizeController = FontSizeController(fontSizeControlView) { newSize ->
+            applyFontSizeToCurrentSticker(newSize)
+        }
+    }
+
+    private fun toggleSizeControl(textSticker: TextSticker) {
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        } else {
+            showSizeControl(textSticker)
+        }
+    }
+    private fun showSizeControl(textSticker: TextSticker) {
+        // Get current text size from sticker
+        val currentSize = getCurrentTextSize(textSticker)
+        fontSizeController.setSize(currentSize)
+        fontSizeController.show()
+        isSizeControlVisible = true
+
+        // Update Size button appearance
+        updateSizeButtonState(true)
+    }
+
+    private fun hideSizeControl() {
+        fontSizeController.hide()
+        isSizeControlVisible = false
+
+        // Update Size button appearance
+        updateSizeButtonState(false)
+    }
+
+    private fun updateSizeButtonState(isActive: Boolean) {
+        val btnSize = findViewById<TextView>(R.id.btn_size)
+        if (isActive) {
+            btnSize?.setTextColor(resources.getColor(R.color.green, null))
+        } else {
+            btnSize?.setTextColor(resources.getColor(android.R.color.black, null))
+        }
+    }
+
+    private fun updateSizeControllerFromSticker(sticker: Sticker) {
+        try {
+            if (sticker is FlexibleTextSticker) {
+                val currentSize = sticker.getTextSizeSp()
+                fontSizeController.setSizeWithoutCallback(currentSize)
+                currentDisplayedSize = currentSize
+                Log.d("InvitationEditActivity", "Updated size controller to: $currentSize sp")
+            }
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error updating size controller", e)
+        }
+    }
+
+    private fun getCurrentTextSize(textSticker: TextSticker): Int {
+        return if (textSticker is FlexibleTextSticker) {
+            textSticker.getTextSizeSp()
+        } else {
+            currentDisplayedSize // Giá trị mặc định nếu không phải FlexibleTextSticker
+        }
+    }
+
+    private fun applyFontSizeToCurrentSticker(size: Int) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                Log.d("InvitationEditActivity", "Applying font size to FlexibleTextSticker: $size sp")
+                currentSticker.setTextSizeSp(size)
+                stickerView.invalidate()
+                currentDisplayedSize = size
+                Log.d("InvitationEditActivity", "Font size applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying font size: ${e.message}")
+            }
+        }
+    }
+
+    private fun createTextStickerWithSize(
+        text: String,
+        sizeInSp: Int,
+        color: Int = Color.BLACK
+    ) {
+        // Use FlexibleTextSticker
+        val textSticker = FlexibleTextSticker(this)
+
+        textSticker.apply {
+            setText(text)
+            setTextAlign(Layout.Alignment.ALIGN_CENTER)
+            setTextColor(color)
+            setTextSizeSp(sizeInSp)
+        }
+
+        // Add to StickerView
+        stickerView.addSticker(textSticker)
+
+        // Update stored properties
+        currentTextProperties = TextProperties(
+            text = text,
+            color = color,
+            alignment = Layout.Alignment.ALIGN_CENTER,
+            sizeInSp = sizeInSp
+        )
+
+        currentDisplayedSize = sizeInSp
+
+        // Show text tools
+        showTextEditTools()
+
+        Log.d("InvitationEditActivity", "Created flexible text sticker with size: $sizeInSp sp")
     }
 }
