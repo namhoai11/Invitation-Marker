@@ -29,9 +29,10 @@ class FontSizeController(
     private fun setupSeekBar() {
         seekBar.max = maxSize - minSize
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            @SuppressLint("SetTextI18n")
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val size = minSize + progress
-                tvSize.text = "${size}sp"
+                tvSize.text = "$size"
 
                 if (fromUser && isCallbackEnabled) {
                     onSizeChanged(size)

@@ -2,21 +2,16 @@ package com.example.invitationcard.ui
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.Typeface
 import android.os.Bundle
-import android.text.InputType
 import android.text.Layout
 import android.util.Log
-import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
-import android.widget.EditText
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -34,7 +29,6 @@ import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.StickerView
 import com.xiaopo.flying.sticker.TextSticker
 import kotlinx.coroutines.launch
-import java.lang.reflect.Method
 
 class InvitationEditActivity : AppCompatActivity() {
 
@@ -44,29 +38,8 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var fontManager: FontManager
     private var currentSelectedFont: FontItem? = null
 
-
     private lateinit var fontSizeController: FontSizeController
     private var isSizeControlVisible = false
-
-
-    // Store current text properties
-    private data class TextProperties(
-        val text: String,
-        val color: Int,
-        val alignment: Layout.Alignment,
-        val sizeInSp: Int = 30
-    )
-
-    private var baseTextSize = 30f
-    private var currentScale = 1.0f
-
-    private var currentDisplayedSize = 30
-    private var debugDone = false
-    private var textSizeMethod: Method? = null
-    private var currentTextContent = "Enter text..."
-    private var currentTextColor = android.graphics.Color.GRAY
-
-    private var currentTextProperties: TextProperties? = null
 
     companion object {
         private const val REQUEST_EDIT_TEXT = 1001
@@ -95,20 +68,7 @@ class InvitationEditActivity : AppCompatActivity() {
         stickerView.setLocked(false)
 
         // QUAN TRỌNG: Đặt showBorder = true bằng phản chiếu (reflection)
-        try {
-            val field = StickerView::class.java.getDeclaredField("showBorder")
-            field.isAccessible = true
-            field.setBoolean(stickerView, true)
-
-            val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
-            borderPaintField.isAccessible = true
-            val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
-            borderPaint.color = Color.GREEN
-            borderPaint.alpha = 255
-            borderPaint.strokeWidth = 8f
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+//        setupBorderAppearance()
 
         fontManager = FontManager(this)
         setupFontSizeController()
@@ -116,51 +76,29 @@ class InvitationEditActivity : AppCompatActivity() {
         setupTextEditingTools()
     }
 
-    private fun setupDynamicBorder() {
-        try {
-            // Enable border display
-            val showBorderField = StickerView::class.java.getDeclaredField("showBorder")
-            showBorderField.isAccessible = true
-            showBorderField.setBoolean(stickerView, true)
-
-            // Customize border paint for better visibility
-            val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
-            borderPaintField.isAccessible = true
-            val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
-
-            borderPaint.apply {
-                color = Color.parseColor("#2196F3") // Blue color
-                strokeWidth = 2f
-                style = android.graphics.Paint.Style.STROKE
-                alpha = 180
-                // Remove dash effect for cleaner look
-                pathEffect = null
-            }
-
-            // Customize icon paint if exists
-            try {
-                val iconPaintField = StickerView::class.java.getDeclaredField("iconPaint")
-                iconPaintField.isAccessible = true
-                val iconPaint = iconPaintField.get(stickerView) as android.graphics.Paint
-                iconPaint.alpha = 200
-            } catch (e: Exception) {
-                Log.d("InvitationEditActivity", "No iconPaint field found")
-            }
-
-            Log.d("InvitationEditActivity", "Dynamic border setup completed")
-        } catch (e: Exception) {
-            Log.e("InvitationEditActivity", "Error setting up dynamic border", e)
-        }
-    }
+//    private fun setupBorderAppearance() {
+//        try {
+//            val field = StickerView::class.java.getDeclaredField("showBorder")
+//            field.isAccessible = true
+//            field.setBoolean(stickerView, true)
+//
+//            val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
+//            borderPaintField.isAccessible = true
+//            val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
+//            borderPaint.color = Color.GREEN
+//            borderPaint.alpha = 255
+//            borderPaint.strokeWidth = 8f
+//        } catch (e: Exception) {
+//            e.printStackTrace()
+//        }
+//    }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupBackgroundTouchListener() {
         mainContainer.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_DOWN) {
-                // Kiểm tra xem tap có vào khoảng trống không
                 val wasHandled = stickerView.dispatchTouchEvent(event)
                 if (!wasHandled) {
-                    // Nếu StickerView không xử lý event, bỏ chọn sticker hiện tại
                     unselectCurrentSticker()
                     return@setOnTouchListener true
                 }
@@ -169,7 +107,6 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Phương thức để bỏ chọn sticker hiện tại
     private fun unselectCurrentSticker() {
         try {
             val field = StickerView::class.java.getDeclaredField("handlingSticker")
@@ -207,24 +144,24 @@ class InvitationEditActivity : AppCompatActivity() {
                 }
             }
 
-            override fun onStickerDragFinished(sticker: Sticker) {
-                // Handle drag finished
-            }
+            override fun onStickerDragFinished(sticker: Sticker) {}
 
-            override fun onStickerTouchedDown(sticker: Sticker) {
-                // Handle touch down
-            }
+            override fun onStickerTouchedDown(sticker: Sticker) {}
 
             override fun onStickerZoomFinished(sticker: Sticker) {
-                // QUAN TRỌNG: Update size controller khi zoom finished
-                if (sticker is FlexibleTextSticker && isSizeControlVisible) {
-                    updateSizeControllerFromSticker(sticker)
+                if (sticker is FlexibleTextSticker) {
+                    val scale = sticker.getCurrentScale()
+                    val newSize = (sticker.getTextSizeSp() * scale).toInt().coerceIn(8, 200)
+                    sticker.setTextSizeSp(newSize)
+                    // Reset scale nhưng giữ lại vị trí/góc xoay
+                    sticker.resetScaleKeepPosition()
+                    if (isSizeControlVisible) {
+                        updateSizeControllerFromSticker(sticker)
+                    }
+                    stickerView.invalidate()
                 }
             }
-
-            override fun onStickerFlipped(sticker: Sticker) {
-                // Handle flip
-            }
+            override fun onStickerFlipped(sticker: Sticker) {}
 
             override fun onStickerDoubleTapped(sticker: Sticker) {
                 if (sticker is TextSticker) {
@@ -263,9 +200,9 @@ class InvitationEditActivity : AppCompatActivity() {
                 toggleSizeControl(currentSticker)
             }
         }
-
     }
 
+    @SuppressLint("InflateParams")
     private fun showAddItemDialog() {
         val dialog = Dialog(this)
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_add_item, null)
@@ -305,26 +242,22 @@ class InvitationEditActivity : AppCompatActivity() {
         startActivityForResult(intent, REQUEST_EDIT_TEXT)
     }
 
-    // Xử lý kết quả trả về từ TextEditorActivity
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_EDIT_TEXT && resultCode == Activity.RESULT_OK) {
             val resultText = data?.getStringExtra(TextEditorActivity.RESULT_TEXT)
-            Log.d("InvitationEditActivity", "Result text: $resultText")
             if (resultText != null) {
                 val currentSticker = getCurrentSticker()
                 if (currentSticker is TextSticker) {
                     currentSticker.setText(resultText)
                     currentSticker.resizeText()
-                    Log.d("InvitationEditActivity", "Updated text: ${currentSticker.text}")
                     stickerView.invalidate()
                 }
             }
         }
     }
 
-    // Phương thức lấy sticker hiện tại đang được chọn
     private fun getCurrentSticker(): Sticker? {
         try {
             val field = StickerView::class.java.getDeclaredField("handlingSticker")
@@ -337,7 +270,6 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun createTextSticker(text: String) {
-//        createTextStickerWithSize(text, 8, Color.GRAY)
         createTextStickerFirst(text)
     }
 
@@ -347,13 +279,13 @@ class InvitationEditActivity : AppCompatActivity() {
             setTextAlign(Layout.Alignment.ALIGN_CENTER)
             setTypeface(Typeface.DEFAULT)
             setTextColor(Color.GRAY)
-            setTextSizeSp(18) // Giảm kích thước mặc định xuống 18sp
+            setTextSizeSp(18) // Kích thước mặc định 18sp
         }
 
         // Thêm sticker vào StickerView
         stickerView.addSticker(textSticker)
 
-        // Hiện toolbar chỉnh sửa text và ẩn toolbar ảnh
+        // Hiện toolbar chỉnh sửa text
         showTextEditTools()
     }
 
@@ -380,6 +312,7 @@ class InvitationEditActivity : AppCompatActivity() {
             hideSizeControl()
         }
     }
+
     private fun showFontSelectionBottomSheet(textSticker: TextSticker) {
         // Get current font of the text sticker
         val currentFont = currentSelectedFont ?: FontItem("Default", "default", "System", isSystemFont = true)
@@ -426,22 +359,21 @@ class InvitationEditActivity : AppCompatActivity() {
             showSizeControl(textSticker)
         }
     }
+
     private fun showSizeControl(textSticker: TextSticker) {
-        // Get current text size from sticker
+        // Lấy kích thước hiện tại của text
         val currentSize = getCurrentTextSize(textSticker)
         fontSizeController.setSize(currentSize)
         fontSizeController.show()
         isSizeControlVisible = true
 
-        // Update Size button appearance
+        // Cập nhật trạng thái nút Size
         updateSizeButtonState(true)
     }
 
     private fun hideSizeControl() {
         fontSizeController.hide()
         isSizeControlVisible = false
-
-        // Update Size button appearance
         updateSizeButtonState(false)
     }
 
@@ -459,7 +391,6 @@ class InvitationEditActivity : AppCompatActivity() {
             if (sticker is FlexibleTextSticker) {
                 val currentSize = sticker.getTextSizeSp()
                 fontSizeController.setSizeWithoutCallback(currentSize)
-                currentDisplayedSize = currentSize
                 Log.d("InvitationEditActivity", "Updated size controller to: $currentSize sp")
             }
         } catch (e: Exception) {
@@ -471,7 +402,7 @@ class InvitationEditActivity : AppCompatActivity() {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getTextSizeSp()
         } else {
-            currentDisplayedSize // Giá trị mặc định nếu không phải FlexibleTextSticker
+            18 // Giá trị mặc định nếu không phải FlexibleTextSticker
         }
     }
 
@@ -479,48 +410,13 @@ class InvitationEditActivity : AppCompatActivity() {
         val currentSticker = getCurrentSticker()
         if (currentSticker is FlexibleTextSticker) {
             try {
-                Log.d("InvitationEditActivity", "Applying font size to FlexibleTextSticker: $size sp")
+                Log.d("InvitationEditActivity", "Applying font size: $size sp")
                 currentSticker.setTextSizeSp(size)
                 stickerView.invalidate()
-                currentDisplayedSize = size
                 Log.d("InvitationEditActivity", "Font size applied successfully")
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying font size: ${e.message}")
             }
         }
-    }
-
-    private fun createTextStickerWithSize(
-        text: String,
-        sizeInSp: Int,
-        color: Int = Color.BLACK
-    ) {
-        // Use FlexibleTextSticker
-        val textSticker = FlexibleTextSticker(this)
-
-        textSticker.apply {
-            setText(text)
-            setTextAlign(Layout.Alignment.ALIGN_CENTER)
-            setTextColor(color)
-            setTextSizeSp(sizeInSp)
-        }
-
-        // Add to StickerView
-        stickerView.addSticker(textSticker)
-
-        // Update stored properties
-        currentTextProperties = TextProperties(
-            text = text,
-            color = color,
-            alignment = Layout.Alignment.ALIGN_CENTER,
-            sizeInSp = sizeInSp
-        )
-
-        currentDisplayedSize = sizeInSp
-
-        // Show text tools
-        showTextEditTools()
-
-        Log.d("InvitationEditActivity", "Created flexible text sticker with size: $sizeInSp sp")
     }
 }
