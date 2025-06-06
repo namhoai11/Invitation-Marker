@@ -19,6 +19,10 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     private var customTextSizeSp: Int = 18  // Bắt đầu với kích thước nhỏ hơn
     private val context: Context = context
 
+
+    // Thêm biến này để kiểm soát hiển thị border
+    private var showCustomBorder: Boolean = false
+
     // Thêm các thuộc tính cho border
     private val borderPaint = Paint().apply {
         color = android.graphics.Color.GREEN
@@ -257,6 +261,10 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         }
     }
 
+    fun setShowBorder(show: Boolean) {
+        this.showCustomBorder = show
+    }
+
     override fun draw(canvas: Canvas) {
         try {
             canvas.save()
@@ -274,16 +282,18 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
                 return
             }
 
-            // Vẽ border đúng realBounds
-            canvas.drawRoundRect(
-                realBounds.left.toFloat(),
-                realBounds.top.toFloat(),
-                realBounds.right.toFloat(),
-                realBounds.bottom.toFloat(),
-                borderCornerRadius,
-                borderCornerRadius,
-                borderPaint
-            )
+            // Chỉ vẽ border khi showCustomBorder = true
+            if (showCustomBorder) {
+                canvas.drawRoundRect(
+                    realBounds.left.toFloat(),
+                    realBounds.top.toFloat(),
+                    realBounds.right.toFloat(),
+                    realBounds.bottom.toFloat(),
+                    borderCornerRadius,
+                    borderCornerRadius,
+                    borderPaint
+                )
+            }
 
             val horizontalCenter = (realBounds.width() - staticLayout.width) / 2f
             val verticalCenter = (realBounds.height() - staticLayout.height) / 2f

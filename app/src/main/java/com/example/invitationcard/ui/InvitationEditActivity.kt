@@ -76,22 +76,6 @@ class InvitationEditActivity : AppCompatActivity() {
         setupTextEditingTools()
     }
 
-//    private fun setupBorderAppearance() {
-//        try {
-//            val field = StickerView::class.java.getDeclaredField("showBorder")
-//            field.isAccessible = true
-//            field.setBoolean(stickerView, true)
-//
-//            val borderPaintField = StickerView::class.java.getDeclaredField("borderPaint")
-//            borderPaintField.isAccessible = true
-//            val borderPaint = borderPaintField.get(stickerView) as android.graphics.Paint
-//            borderPaint.color = Color.GREEN
-//            borderPaint.alpha = 255
-//            borderPaint.strokeWidth = 8f
-//        } catch (e: Exception) {
-//            e.printStackTrace()
-//        }
-//    }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupBackgroundTouchListener() {
@@ -107,36 +91,82 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
+    // Thêm phương thức mới vào InvitationEditActivity
+    private fun hideAllStickerBorders() {
+        try {
+            // Lấy danh sách tất cả sticker từ StickerView
+            val stickersField = StickerView::class.java.getDeclaredField("stickers")
+            stickersField.isAccessible = true
+            @Suppress("UNCHECKED_CAST")
+            val stickers = stickersField.get(stickerView) as? List<Sticker>
+
+            // Nếu danh sách sticker tồn tại, ẩn border cho tất cả
+            stickers?.forEach { sticker ->
+                if (sticker is FlexibleTextSticker) {
+                    sticker.setShowBorder(false)
+                }
+            }
+
+            // Buộc vẽ lại
+            stickerView.invalidate()
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error hiding all sticker borders", e)
+        }
+    }
+
+
     private fun unselectCurrentSticker() {
         try {
+            // Đặt handlingSticker = null
             val field = StickerView::class.java.getDeclaredField("handlingSticker")
             field.isAccessible = true
             field.set(stickerView, null)
 
+            // Ẩn tất cả border
+            hideAllStickerBorders()
+
+            // Ẩn các công cụ
             hideAllEditTools()
+
+            // Buộc vẽ lại
             stickerView.invalidate()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("InvitationEditActivity", "Error in unselectCurrentSticker", e)
         }
     }
 
     private fun setupStickerViewListeners() {
         stickerView.setOnStickerOperationListener(object : StickerView.OnStickerOperationListener {
             override fun onStickerAdded(sticker: Sticker) {
-                if (sticker is TextSticker) {
-                    showTextEditTools()
+                try {
+                    hideAllStickerBorders()
+                    if (sticker is FlexibleTextSticker) {
+                        // Hiển thị border khi thêm mới
+                        sticker.setShowBorder(true)
+                        showTextEditTools()
+                    }
+                    stickerView.invalidate()
+                }catch (e: Exception) {
+                    Log.e("InvitationEditActivity", "Error in onStickerAdded", e)
                 }
-                stickerView.invalidate()
+
             }
 
             override fun onStickerClicked(sticker: Sticker) {
-                if (sticker is TextSticker) {
-                    showTextEditTools()
-                    // Update size controller with current size
-                    updateSizeControllerFromSticker(sticker)
+                try {
+                    hideAllStickerBorders()
+                    if (sticker is FlexibleTextSticker) {
+                        sticker.setShowBorder(true)
+                        showTextEditTools()
+                        updateSizeControllerFromSticker(sticker)
+                    }
+
+                    stickerView.invalidate()
+                } catch (e: Exception) {
+                    Log.e("InvitationEditActivity", "Error in onStickerClicked", e)
                 }
-                stickerView.invalidate()
             }
+
 
             override fun onStickerDeleted(sticker: Sticker) {
                 if (stickerView.stickerCount == 0) {
