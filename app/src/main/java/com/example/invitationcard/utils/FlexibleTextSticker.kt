@@ -4,21 +4,20 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.util.Log
 import android.util.TypedValue
-import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.TextSticker
-import java.lang.reflect.Field
 
 class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     private var customTextSizeSp: Int = 18  // Bắt đầu với kích thước nhỏ hơn
     private val context: Context = context
 
+    // Thêm biến để theo dõi trạng thái khởi tạo
+    private var isInitialSetup = true
 
     // Thêm biến này để kiểm soát hiển thị border
     private var showCustomBorder: Boolean = false
@@ -56,7 +55,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     // Thêm phương thức để cập nhật border theo kích thước text
     private fun updateBorderSize() {
         try {
-            val text = getText() ?: ""
+            val text = text ?: ""
             if (text.isEmpty()) return
 
             // Lấy TextPaint
@@ -65,7 +64,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             val textPaint = textPaintField.get(this) as TextPaint
 
             // Tính toán kích thước border dựa trên kích thước text
-            val scale = getCurrentScale()
+            val scale = currentScale
             val scaledPadding = borderPadding * scale
             val scaledCornerRadius = borderCornerRadius * scale
             borderPaint.strokeWidth = 8f * scale
@@ -101,8 +100,6 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         }
     }
 
-
-
     // Cập nhật phương thức setTextSizeSp để cập nhật border
     fun setTextSizeSp(sizeInSp: Int) {
         try {
@@ -128,28 +125,6 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             updateRealBoundsToText()
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error setting text size", e)
-        }
-    }
-
-    // Cập nhật phương thức calculateTextSizeFromScale để cập nhật border
-    fun calculateTextSizeFromScale(): Int {
-        try {
-            // Lấy scale hiện tại từ matrix
-            val scale = getCurrentScale()
-
-            // Tính toán kích thước mới dựa trên scale
-            val newSize = (customTextSizeSp * scale).toInt()
-
-            // Giới hạn kích thước trong khoảng cho phép
-            val finalSize = newSize.coerceIn(8, 200)
-
-            // Cập nhật border
-            updateBorderSize()
-
-            return finalSize
-        } catch (e: Exception) {
-            Log.e("FlexibleTextSticker", "Error calculating text size from scale", e)
-            return customTextSizeSp
         }
     }
 
@@ -192,26 +167,52 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             val lineCount = Math.max(text.count { it == '\n' } + 1, 1)
             val textHeight = lineHeight * lineCount
 
-            // Đảm bảo kích thước tối thiểu
-            val minWidth = Math.max(textWidth + paddingHorizontal * 2, 150)
-            val minHeight = Math.max(textHeight + paddingVertical * 2, 60)
-
             // Cập nhật cả realBounds và textRect
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
             val realBounds = realBoundsField.get(this) as android.graphics.Rect
-            realBounds.set(0, 0, minWidth, minHeight)
 
+            // Tính kích thước mới
+            val minWidth = Math.max(textWidth + paddingHorizontal * 2, 150)
+            val minHeight = Math.max(textHeight + paddingVertical * 2, 60)
+
+            // Xử lý đặc biệt cho lần đầu tiên
+            if (isInitialSetup) {
+                // Đặt bounds ban đầu với điểm neo ở trung tâm (0,0)
+                realBounds.set(-minWidth/2, -minHeight/2, minWidth/2, minHeight/2)
+                isInitialSetup = false
+                Log.d("FlexibleTextSticker", "Initial setup with centered bounds")
+            } else {
+                // Lưu lại kích thước cũ
+                val oldWidth = realBounds.width()
+                val oldHeight = realBounds.height()
+
+                // Tính độ chênh lệch
+                val widthDiff = (minWidth - oldWidth) / 2
+                val heightDiff = (minHeight - oldHeight) / 2
+
+                // Mở rộng bounds theo cả 4 hướng từ trung tâm
+                realBounds.left -= widthDiff
+                realBounds.top -= heightDiff
+                realBounds.right += widthDiff
+                realBounds.bottom += heightDiff
+            }
+
+            // Cập nhật textRect và drawable
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
             val textRect = textRectField.get(this) as android.graphics.Rect
-            textRect.set(0, 0, minWidth, minHeight)
+            textRect.set(realBounds)
 
-            // Cập nhật drawable nếu có
             val drawableField = TextSticker::class.java.getDeclaredField("drawable")
             drawableField.isAccessible = true
             val drawable = drawableField.get(this) as? android.graphics.drawable.Drawable
-            drawable?.setBounds(0, 0, minWidth, minHeight)
+            drawable?.setBounds(
+                realBounds.left,
+                realBounds.top,
+                realBounds.right,
+                realBounds.bottom
+            )
 
             // Tạo StaticLayout mới với chiều rộng thích hợp
             val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
@@ -231,7 +232,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             staticLayoutField.isAccessible = true
             staticLayoutField.set(this, staticLayout)
 
-            Log.d("FlexibleTextSticker", "Updated border: $minWidth x $minHeight")
+            Log.d("FlexibleTextSticker", "Updated bounds: left=${realBounds.left}, top=${realBounds.top}, right=${realBounds.right}, bottom=${realBounds.bottom}")
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error updating bounds", e)
         }
@@ -239,23 +240,17 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     private fun updateRealBoundsToText() {
         try {
-            updateBoundsToFitText() // Đảm bảo staticLayout đã được tạo
-            val text = getText() ?: ""
-            if (text.isEmpty()) return
-
-            val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
-            staticLayoutField.isAccessible = true
-            val staticLayout = staticLayoutField.get(this) as? StaticLayout ?: return
-
+            // Lưu kích thước cũ
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
             val realBounds = realBoundsField.get(this) as android.graphics.Rect
+            val oldWidth = realBounds.width()
+            val oldHeight = realBounds.height()
 
-            val padding = 20
-            val width = staticLayout.width + padding * 2
-            val height = staticLayout.height + padding * 2
+            // Gọi updateBoundsToFitText() để cập nhật StaticLayout
+            updateBoundsToFitText()
 
-            realBounds.set(0, 0, width, height)
+            // Phần còn lại không cần thiết vì updateBoundsToFitText đã cập nhật tất cả
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error updating realBounds", e)
         }
@@ -295,9 +290,10 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
                 )
             }
 
-            val horizontalCenter = (realBounds.width() - staticLayout.width) / 2f
-            val verticalCenter = (realBounds.height() - staticLayout.height) / 2f
-            canvas.translate(horizontalCenter, verticalCenter)
+            // Vẽ text căn giữa trong bounds
+            val offsetX = realBounds.left + (realBounds.width() - staticLayout.width) / 2f
+            val offsetY = realBounds.top + (realBounds.height() - staticLayout.height) / 2f
+            canvas.translate(offsetX, offsetY)
             staticLayout.draw(canvas)
 
             canvas.restore()
@@ -366,4 +362,20 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         this.matrix.reset() // Reset về identity matrix
     }
 
+//    // Hàm để lấy scale hiện tại
+//    fun getCurrentScale(): Float {
+//        val values = FloatArray(9)
+//        matrix.getValues(values)
+//        // Scale là giá trị đầu tiên trong ma trận
+//        return values[Matrix.MSCALE_X]
+//    }
+//
+//    // Hàm để lấy góc xoay hiện tại
+//    fun getCurrentAngle(): Float {
+//        val values = FloatArray(9)
+//        matrix.getValues(values)
+//        // Tính góc xoay từ ma trận
+//        return Math.toDegrees(Math.atan2(values[Matrix.MSKEW_X].toDouble(),
+//            values[Matrix.MSCALE_X].toDouble())).toFloat()
+//    }
 }
