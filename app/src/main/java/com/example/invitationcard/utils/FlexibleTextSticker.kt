@@ -2,6 +2,7 @@ package com.example.invitationcard.utils
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.text.Layout
@@ -33,6 +34,9 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     private var borderPadding = 20f // Padding cho border
     private var borderCornerRadius = 10f // Bo góc cho border
+
+    // Thêm biến lưu trữ màu
+    private var currentTextColor: Int = Color.BLACK
 
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
@@ -378,4 +382,15 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 //        return Math.toDegrees(Math.atan2(values[Matrix.MSKEW_X].toDouble(),
 //            values[Matrix.MSCALE_X].toDouble())).toFloat()
 //    }
+
+    // Phương thức custom để set màu
+    fun setCustomTextColor(color: Int) {
+        currentTextColor = color
+        super.setTextColor(color)
+    }
+
+    // Phương thức custom để get màu
+    fun getCustomTextColor(): Int {
+        return currentTextColor
+    }
 }

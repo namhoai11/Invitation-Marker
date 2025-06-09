@@ -45,6 +45,9 @@ class InvitationEditActivity : AppCompatActivity() {
         private const val REQUEST_EDIT_TEXT = 1001
     }
 
+    private lateinit var textColorController: TextColorController
+    private var isColorControlVisible = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -72,6 +75,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
         fontManager = FontManager(this)
         setupFontSizeController()
+        setupTextColorController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
     }
@@ -113,7 +117,6 @@ class InvitationEditActivity : AppCompatActivity() {
             Log.e("InvitationEditActivity", "Error hiding all sticker borders", e)
         }
     }
-
 
     private fun unselectCurrentSticker() {
         try {
@@ -230,6 +233,14 @@ class InvitationEditActivity : AppCompatActivity() {
                 toggleSizeControl(currentSticker)
             }
         }
+
+        // THÊM: Xử lý click cho nút color - NHẤT QUÁN với size
+        findViewById<ImageButton>(R.id.btn_color)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is TextSticker) {
+                toggleColorControl(currentSticker)
+            }
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -308,7 +319,7 @@ class InvitationEditActivity : AppCompatActivity() {
             setText(text)
             setTextAlign(Layout.Alignment.ALIGN_CENTER)
             setTypeface(Typeface.DEFAULT)
-            setTextColor(Color.GRAY)
+            setCustomTextColor(Color.GRAY) // SỬA: Dùng setCustomTextColor
             setTextSizeSp(18) // Kích thước mặc định 18sp
         }
 
@@ -332,6 +343,9 @@ class InvitationEditActivity : AppCompatActivity() {
         if (isSizeControlVisible) {
             hideSizeControl()
         }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
     }
 
     private fun hideAllEditTools() {
@@ -340,6 +354,9 @@ class InvitationEditActivity : AppCompatActivity() {
         // Hide size control
         if (isSizeControlVisible) {
             hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
         }
     }
 
@@ -446,6 +463,93 @@ class InvitationEditActivity : AppCompatActivity() {
                 Log.d("InvitationEditActivity", "Font size applied successfully")
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying font size: ${e.message}")
+            }
+        }
+    }
+
+    // Thêm phương thức setupTextColorController()
+    private fun setupTextColorController() {
+        val textColorControlView = findViewById<View>(R.id.text_color_control)
+        textColorController = TextColorController(textColorControlView) { newColor ->
+            applyTextColorToCurrentSticker(newColor)
+        }
+    }
+
+    // Thêm phương thức toggleColorControl()
+    private fun toggleColorControl(textSticker: TextSticker) {
+        if (isColorControlVisible) {
+            hideColorControl()
+        } else {
+            showColorControl(textSticker)
+        }
+    }
+
+    // Thêm phương thức showColorControl()
+    private fun showColorControl(textSticker: TextSticker) {
+        // Kiểm tra type và lấy màu hiện tại
+        val currentColor = getCurrentTextColor(textSticker)
+        textColorController.setColor(currentColor)
+        textColorController.show()
+        isColorControlVisible = true
+
+        updateColorButtonState(true)
+
+        // Ẩn size control nếu đang hiển thị
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+    }
+
+    // Thêm phương thức hideColorControl()
+    private fun hideColorControl() {
+        textColorController.hide()
+        isColorControlVisible = false
+        updateColorButtonState(false)
+    }
+
+    // Thêm phương thức updateColorButtonState()
+    private fun updateColorButtonState(isActive: Boolean) {
+        val btnColor = findViewById<ImageButton>(R.id.btn_color)
+        if (isActive) {
+            btnColor?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnColor?.clearColorFilter()
+        }
+    }
+
+
+    // NHẤT QUÁN: Chấp nhận TextSticker và kiểm tra type bên trong
+    private fun getCurrentTextColor(textSticker: TextSticker): Int {
+        return if (textSticker is FlexibleTextSticker) {
+            textSticker.getCustomTextColor()
+        } else {
+            Color.BLACK // Màu mặc định cho TextSticker thường
+        }
+    }
+
+    // THÊM: Phương thức updateColorControllerFromSticker
+    private fun updateColorControllerFromSticker(sticker: Sticker) {
+        try {
+            if (sticker is FlexibleTextSticker && isColorControlVisible) {
+                val currentColor = sticker.getCustomTextColor()
+                textColorController.setColor(currentColor)
+                Log.d("InvitationEditActivity", "Updated color controller to: #${Integer.toHexString(currentColor)}")
+            }
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error updating color controller", e)
+        }
+    }
+
+    private fun applyTextColorToCurrentSticker(color: Int) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                Log.d("InvitationEditActivity", "Applying text color: #${Integer.toHexString(color)}")
+                currentSticker.setCustomTextColor(color)
+                stickerView.invalidate()
+                Log.d("InvitationEditActivity", "Text color applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying text color: ${e.message}")
             }
         }
     }

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+
+    <path
+        android:pathData="M20,20m-18,0a18,18 0,1 1,36 0a18,18 0,1 1,-36 0"
+        android:fillType="evenOdd">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="sweep"
+                android:centerX="20"
+                android:centerY="20">
+                <item android:offset="0" android:color="#FF0000"/>
+                <item android:offset="0.17" android:color="#FFFF00"/>
+                <item android:offset="0.33" android:color="#00FF00"/>
+                <item android:offset="0.5" android:color="#00FFFF"/>
+                <item android:offset="0.67" android:color="#0000FF"/>
+                <item android:offset="0.83" android:color="#FF00FF"/>
+                <item android:offset="1" android:color="#FF0000"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Vẽ viền trắng bằng path, KHÔNG dùng <circle> -->
+    <path
+        android:pathData="M20,2 a18,18 0 1,0 0,36 a18,18 0 1,0 0,-36"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="0"
+        android:fillColor="@android:color/transparent"/>
+</vector>
