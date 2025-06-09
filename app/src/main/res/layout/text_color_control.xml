@@ -1,168 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="#FFFFFF"
-    android:paddingHorizontal="20dp"
-    android:paddingVertical="16dp">
+    android:background="#FFFFFF"> <!-- Điều chỉnh chiều cao tối đa ở đây -->
 
-    <!-- Design Colors Section -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Design colors"
-            android:textSize="16sp"
-            android:textColor="#000000"
-            android:layout_marginBottom="12dp" />
-
-        <!-- Basic Design Colors Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-
-            <!-- Color circles -->
-            <View
-                android:id="@+id/color_black"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/color_circle_selector"
-                android:backgroundTint="#000000"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <View
-                android:id="@+id/color_orange"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/color_circle_selector"
-                android:backgroundTint="#FF9800"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <View
-                android:id="@+id/color_pink"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/color_circle_selector"
-                android:backgroundTint="#E91E63"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <View
-                android:id="@+id/color_green"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/color_circle_selector"
-                android:backgroundTint="#4CAF50"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <View
-                android:id="@+id/color_red"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="12dp"
-                android:background="@drawable/color_circle_selector"
-                android:backgroundTint="#F44336"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <!-- More options button -->
-            <TextView
-                android:id="@+id/btn_more_colors"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="@drawable/color_circle_selector"
-                android:gravity="center"
-                android:text="•••"
-                android:textColor="#757575"
-                android:textSize="16sp"
-                android:clickable="true"
-                android:focusable="true" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- Expanded Color Sections (Initially Hidden) -->
-    <LinearLayout
-        android:id="@+id/expanded_colors_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:visibility="visible">
+        android:paddingHorizontal="20dp"
+        android:paddingVertical="16dp">
 
-        <!-- Default Colors Section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Default colors"
-                android:textSize="16sp"
-                android:textColor="#000000"
-                android:layout_marginBottom="12dp" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_default_colors"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-
-        <!-- Color Picker Section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="16dp">
-
-            <ImageView
-                android:id="@+id/color_picker_wheel"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@drawable/color_wheel"
-                android:clickable="true"
-                android:focusable="true" />
-        </LinearLayout>
-
-        <!-- Foil Section -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Foil"
-                android:textSize="16sp"
-                android:textColor="#000000"
-                android:layout_marginBottom="12dp" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_foil_colors"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
-
-        <!-- Glitters Section -->
+        <!-- Design Colors Section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -171,15 +20,174 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Glitters"
+                android:text="Design colors"
                 android:textSize="16sp"
                 android:textColor="#000000"
                 android:layout_marginBottom="12dp" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_glitter_colors"
+            <!-- Basic Design Colors Row -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <!-- Color circles -->
+                <View
+                    android:id="@+id/color_black"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:backgroundTint="#000000"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <View
+                    android:id="@+id/color_orange"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:backgroundTint="#FF9800"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <View
+                    android:id="@+id/color_pink"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:backgroundTint="#E91E63"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <View
+                    android:id="@+id/color_green"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:backgroundTint="#4CAF50"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <View
+                    android:id="@+id/color_red"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="12dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:backgroundTint="#F44336"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <!-- More options button -->
+                <TextView
+                    android:id="@+id/btn_more_colors"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/color_circle_selector"
+                    android:gravity="center"
+                    android:text="•••"
+                    android:textColor="#757575"
+                    android:textSize="16sp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Expanded Color Sections -->
+        <LinearLayout
+            android:id="@+id/expanded_colors_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="visible"> <!-- Mặc định ẩn đi, chỉ hiện khi nhấn nút More -->
+
+            <!-- Default Colors Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Default colors"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_default_colors"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
+
+            <!-- Color Picker Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="16dp">
+
+                <ImageView
+                    android:id="@+id/color_picker_wheel"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/color_wheel"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Foil Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Foil"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_foil_colors"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
+
+            <!-- Glitters Section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Glitters"
+                    android:textSize="16sp"
+                    android:textColor="#000000"
+                    android:layout_marginBottom="12dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_glitter_colors"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-</LinearLayout>
+</ScrollView>

@@ -12,6 +12,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
@@ -392,8 +393,15 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun setupFontSizeController() {
         val fontSizeControlView = findViewById<View>(R.id.font_size_control)
+
+        fontSizeControlView.setOnTouchListener { _, _ ->
+            // Luôn trả về true để chặn sự kiện chạm
+            true
+        }
+
         fontSizeController = FontSizeController(fontSizeControlView) { newSize ->
             applyFontSizeToCurrentSticker(newSize)
         }
@@ -468,8 +476,13 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     // Thêm phương thức setupTextColorController()
+    @SuppressLint("ClickableViewAccessibility")
     private fun setupTextColorController() {
         val textColorControlView = findViewById<View>(R.id.text_color_control)
+
+        // THAY ĐỔI: Không chặn mọi sự kiện chạm nữa
+        // Để onTouchListener xử lý trong TextColorController
+
         textColorController = TextColorController(textColorControlView) { newColor ->
             applyTextColorToCurrentSticker(newColor)
         }
@@ -484,11 +497,17 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Thêm phương thức showColorControl()
     private fun showColorControl(textSticker: TextSticker) {
         // Kiểm tra type và lấy màu hiện tại
         val currentColor = getCurrentTextColor(textSticker)
         textColorController.setColor(currentColor)
+
+        // Đặt chiều cao TRƯỚC khi hiển thị
+        val textColorControlView = findViewById<View>(R.id.text_color_control)
+        val params = textColorControlView.layoutParams
+        params.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        textColorControlView.layoutParams = params
+
         textColorController.show()
         isColorControlVisible = true
 
