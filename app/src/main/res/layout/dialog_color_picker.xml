@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@drawable/dialog_background"
+    android:padding="20dp">
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chọn màu"
+        android:textSize="18sp"
+        android:textColor="#000000"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Basic Colors Grid -->
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:rowCount="2"
+        android:layout_marginBottom="20dp">
+
+        <!-- Row 1 -->
+        <View
+            android:id="@+id/dialog_color_red"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#FF0000"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_cyan"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#00FFFF"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_blue"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#0000FF"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_green"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#00FF00"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Row 2 -->
+        <View
+            android:id="@+id/dialog_color_magenta"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#FF00FF"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_yellow"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#FFFF00"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_black"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#000000"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <View
+            android:id="@+id/dialog_color_white"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="8dp"
+            android:background="@drawable/color_circle_selector"
+            android:backgroundTint="#FFFFFF"
+            android:clickable="true"
+            android:focusable="true" />
+    </GridLayout>
+
+    <!-- Action Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <!-- Customize Button -->
+        <TextView
+            android:id="@+id/btn_customize"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/button_outline"
+            android:gravity="center"
+            android:text="Tùy chỉnh"
+            android:textColor="#2196F3"
+            android:textSize="16sp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <!-- Selected Colors Button -->
+        <TextView
+            android:id="@+id/btn_selected_colors"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_outline"
+            android:gravity="center"
+            android:text="Màu đã chọn"
+            android:textColor="#666666"
+            android:textSize="16sp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+
+    <!-- Bottom Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp">
+
+        <TextView
+            android:id="@+id/btn_cancel"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/button_outline"
+            android:gravity="center"
+            android:text="Hủy"
+            android:textColor="#666666"
+            android:textSize="16sp"
+            android:clickable="true"
+            android:focusable="true" />
+
+        <TextView
+            android:id="@+id/btn_apply"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/button_primary"
+            android:gravity="center"
+            android:text="Đặt"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
+</LinearLayout>

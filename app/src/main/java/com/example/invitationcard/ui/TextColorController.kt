@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.recyclerview.widget.GridLayoutManager
@@ -18,7 +19,6 @@ class TextColorController(
 ) {
     private val expandedContainer: View = controlView.findViewById(R.id.expanded_colors_container)
     private val btnMoreColors: TextView = controlView.findViewById(R.id.btn_more_colors)
-
     private val rootScrollView: ScrollView = controlView as ScrollView
 
     // Basic color views
@@ -27,6 +27,9 @@ class TextColorController(
     private val colorPink: View = controlView.findViewById(R.id.color_pink)
     private val colorGreen: View = controlView.findViewById(R.id.color_green)
     private val colorRed: View = controlView.findViewById(R.id.color_red)
+
+    // THÊM: Color picker wheel
+    private val colorPickerWheel: ImageView = controlView.findViewById(R.id.color_picker_wheel)
 
     // RecyclerViews
     private val recyclerDefaultColors: RecyclerView = controlView.findViewById(R.id.recycler_default_colors)
@@ -42,31 +45,54 @@ class TextColorController(
     private var selectedColor = Color.BLACK
 
     init {
-        // Đặt chiều cao mặc định từ đầu
         val params = rootScrollView.layoutParams
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT
         rootScrollView.layoutParams = params
 
-        // Ẩn container mở rộng từ đầu
         expandedContainer.visibility = View.GONE
 
         setupBasicColors()
         setupRecyclerViews()
         setupExpandButton()
-
-        // Đảm bảo ScrollView có thể scroll
+        setupColorPickerWheel() // THÊM: Setup color picker wheel
         setupScrollView()
+    }
+
+    // THÊM: Setup color picker wheel click
+    private fun setupColorPickerWheel() {
+        colorPickerWheel.setOnClickListener {
+            showColorPickerDialog()
+        }
+    }
+
+    // THÊM: Show color picker dialog
+    private fun showColorPickerDialog() {
+        val colorPickerDialog = ColorPickerDialog(controlView.context) { selectedColor ->
+            selectColor(selectedColor)
+            // Reset basic color selection since this is a custom color
+            resetBasicColorSelection()
+            // Update adapters
+            defaultColorsAdapter.setSelectedColor(selectedColor)
+            foilColorsAdapter.setSelectedColor(selectedColor)
+            glitterColorsAdapter.setSelectedColor(selectedColor)
+        }
+        colorPickerDialog.show()
+    }
+
+    // THÊM: Reset basic color selection
+    private fun resetBasicColorSelection() {
+        listOf(colorBlack, colorOrange, colorPink, colorGreen, colorRed).forEach {
+            it.isSelected = false
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupScrollView() {
-        // Cho phép ScrollView xử lý sự kiện scroll
         rootScrollView.setOnTouchListener { v, event ->
             v.onTouchEvent(event)
             true
         }
 
-        // Tắt nested scrolling cho các RecyclerView con vì ScrollView tổng thể đã lo
         recyclerDefaultColors.isNestedScrollingEnabled = false
         recyclerFoilColors.isNestedScrollingEnabled = false
         recyclerGlitterColors.isNestedScrollingEnabled = false
@@ -90,21 +116,18 @@ class TextColorController(
     }
 
     private fun setupRecyclerViews() {
-        // Default colors
         recyclerDefaultColors.layoutManager = GridLayoutManager(controlView.context, 6)
         defaultColorsAdapter = ColorAdapter(getDefaultColors()) { colorItem ->
             selectColor(colorItem.colorValue)
         }
         recyclerDefaultColors.adapter = defaultColorsAdapter
-//        recyclerDefaultColors.isNestedScrollingEnabled = true
-        // Foil colors
+
         recyclerFoilColors.layoutManager = GridLayoutManager(controlView.context, 6)
         foilColorsAdapter = ColorAdapter(getFoilColors()) { colorItem ->
             selectColor(colorItem.colorValue)
         }
         recyclerFoilColors.adapter = foilColorsAdapter
 
-        // Glitter colors
         recyclerGlitterColors.layoutManager = GridLayoutManager(controlView.context, 6)
         glitterColorsAdapter = ColorAdapter(getGlitterColors()) { colorItem ->
             selectColor(colorItem.colorValue)
@@ -127,8 +150,6 @@ class TextColorController(
                 params.height = dpToPx(300)
                 rootScrollView.layoutParams = params
                 expandedContainer.visibility = View.VISIBLE
-
-                // Thêm dòng này để đảm bảo RecyclerViews hiển thị đầy đủ
                 adjustRecyclerViewHeights()
             } else {
                 expandedContainer.visibility = View.GONE
@@ -138,23 +159,19 @@ class TextColorController(
         }
     }
 
-    // Thêm vào TextColorController
     private fun adjustRecyclerViewHeights() {
-        // Tính toán chiều cao cho recyclerDefaultColors
         val defaultColors = getDefaultColors()
         val defaultRowCount = Math.ceil(defaultColors.size / 6.0).toInt()
-        val defaultHeight = defaultRowCount * dpToPx(52) // mỗi hàng cao khoảng 48dp
+        val defaultHeight = defaultRowCount * dpToPx(52)
         recyclerDefaultColors.layoutParams.height = defaultHeight
         recyclerDefaultColors.requestLayout()
 
-        // Tương tự cho recyclerFoilColors
         val foilColors = getFoilColors()
         val foilRowCount = Math.ceil(foilColors.size / 6.0).toInt()
         val foilHeight = foilRowCount * dpToPx(52)
         recyclerFoilColors.layoutParams.height = foilHeight
         recyclerFoilColors.requestLayout()
 
-        // Và recyclerGlitterColors
         val glitterColors = getGlitterColors()
         val glitterRowCount = Math.ceil(glitterColors.size / 6.0).toInt()
         val glitterHeight = glitterRowCount * dpToPx(52)
@@ -162,7 +179,6 @@ class TextColorController(
         recyclerGlitterColors.requestLayout()
     }
 
-    // Phương thức tiện ích để chuyển đổi dp sang px
     private fun dpToPx(dp: Int): Int {
         val scale = controlView.context.resources.displayMetrics.density
         return (dp * scale + 0.5f).toInt()
@@ -174,11 +190,9 @@ class TextColorController(
     }
 
     private fun updateBasicColorSelection(selectedView: View) {
-        // Reset all basic colors
         listOf(colorBlack, colorOrange, colorPink, colorGreen, colorRed).forEach {
             it.isSelected = false
         }
-        // Select current
         selectedView.isSelected = true
     }
 
@@ -242,7 +256,6 @@ class TextColorController(
     fun setColor(color: Int) {
         selectedColor = color
 
-        // Kiểm tra xem màu có trong các màu cơ bản không
         val basicColors = mapOf(
             colorBlack to Color.BLACK,
             colorOrange to Color.parseColor("#FF9800"),
@@ -255,59 +268,31 @@ class TextColorController(
         if (basicColorView != null) {
             updateBasicColorSelection(basicColorView)
         } else {
-            // Reset basic color selection
-            listOf(colorBlack, colorOrange, colorPink, colorGreen, colorRed).forEach {
-                it.isSelected = false
-            }
+            resetBasicColorSelection()
         }
 
-        // Update adapters
         defaultColorsAdapter.setSelectedColor(color)
         foilColorsAdapter.setSelectedColor(color)
         glitterColorsAdapter.setSelectedColor(color)
     }
 
-    // Điều chỉnh phương thức show() để đặt chiều cao TRƯỚC khi hiển thị
     fun show() {
-        // Đặt chiều cao là WRAP_CONTENT ban đầu
         val params = rootScrollView.layoutParams
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT
         rootScrollView.layoutParams = params
 
-        // Đảm bảo expanded container đã được ẩn nếu isExpanded = false
         if (!isExpanded) {
             expandedContainer.visibility = View.GONE
         }
 
-        // Giờ mới hiển thị
         controlView.visibility = View.VISIBLE
-    }
-    // Thêm phương thức mới để cho phép ScrollView xử lý sự kiện cuộn
-    @SuppressLint("ClickableViewAccessibility")
-    private fun enableScrolling() {
-        rootScrollView.setOnTouchListener { v, event ->
-            // Để ScrollView xử lý sự kiện
-            v.onTouchEvent(event)
-            // Vẫn chặn event để nó không truyền xuống mainContainer
-            true
-        }
-    }
-
-    // Thêm phương thức này để từ bên ngoài có thể đặt chiều cao tối đa
-    fun setMaxExpandedHeight(heightDp: Int) {
-        val params = rootScrollView.layoutParams
-        params.height = dpToPx(heightDp)
-        rootScrollView.layoutParams = params
     }
 
     fun hide() {
         controlView.visibility = View.GONE
-
-        // Reset trạng thái
         isExpanded = false
         expandedContainer.visibility = View.GONE
 
-        // Reset chiều cao về wrap_content
         val params = rootScrollView.layoutParams
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT
         rootScrollView.layoutParams = params
