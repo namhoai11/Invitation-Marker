@@ -4,10 +4,16 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.ShapeDrawable
+import android.graphics.drawable.shapes.RectShape
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewTreeObserver
 import android.widget.ImageView
 import android.widget.TextView
 import com.example.invitationcard.R
@@ -36,7 +42,7 @@ class HSVColorPickerDialog(
         dialog.setContentView(view)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
-        // THÊM DÒNG NÀY: Thiết lập chiều rộng bằng 90% chiều rộng màn hình
+        // Thiết lập chiều rộng bằng 90% chiều rộng màn hình
         dialog.window?.setLayout(
             (context.resources.displayMetrics.widthPixels * 0.9).toInt(),
             android.view.WindowManager.LayoutParams.WRAP_CONTENT
@@ -58,6 +64,74 @@ class HSVColorPickerDialog(
         hueGradient = view.findViewById(R.id.hue_gradient)
         saturationGradient = view.findViewById(R.id.saturation_gradient)
         valueGradient = view.findViewById(R.id.value_gradient)
+
+        // Thiết lập gradient hue
+        setupHueGradient()
+    }
+
+//    private fun setupHueGradient() {
+//        // Chỉ thiết lập gradient sau khi view đã được đo kích thước
+//        hueGradient.post {
+//            // Lúc này view đã được vẽ và có kích thước
+//            val width = hueGradient.width.toFloat()
+//            if (width > 0) {
+//                val hueColors = intArrayOf(
+//                    Color.RED,         // 0°
+//                    Color.YELLOW,      // 60°
+//                    Color.GREEN,       // 120°
+//                    Color.CYAN,        // 180°
+//                    Color.BLUE,        // 240°
+//                    Color.MAGENTA,     // 300°
+//                    Color.RED          // 360°
+//                )
+//
+//                val linearGradient = LinearGradient(
+//                    0f, 0f, width, 0f,
+//                    hueColors, null, Shader.TileMode.CLAMP
+//                )
+//
+//                val paint = Paint()
+//                paint.shader = linearGradient
+//
+//                hueGradient.background = ShapeDrawable().apply {
+//                    shape = RectShape()
+//                    this.paint.set(paint)
+//                }
+//            }
+//        }
+//    }
+
+    private fun setupHueGradient() {
+        hueGradient.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                // Chỉ chạy một lần khi view được vẽ xong
+                hueGradient.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                // Lúc này view đã có kích thước thực
+                val width = hueGradient.width.toFloat()
+                val hueColors = intArrayOf(
+                    Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN,
+                    Color.BLUE, Color.MAGENTA, Color.RED
+                )
+
+                val linearGradient = LinearGradient(
+                    0f, 0f, width, 0f,
+                    hueColors, null, Shader.TileMode.CLAMP
+                )
+
+                val paint = Paint()
+                paint.shader = linearGradient
+
+                hueGradient.background = ShapeDrawable().apply {
+                    shape = RectShape()
+                    this.paint.set(paint)
+                }
+
+                // Cập nhật gradient cho saturation và value
+                updateSaturationGradient()
+                updateValueGradient()
+            }
+        })
     }
 
     @SuppressLint("ClickableViewAccessibility")
