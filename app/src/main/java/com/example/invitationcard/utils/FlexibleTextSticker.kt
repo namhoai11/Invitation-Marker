@@ -46,6 +46,8 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     fun isBold(): Boolean = isBold
     fun isItalic(): Boolean = isItalic
 
+    private var currentAlignment: Layout.Alignment = Layout.Alignment.ALIGN_CENTER
+
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
         try {
@@ -62,6 +64,8 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
         // Đặt kích thước ban đầu
         setTextSizeSp(customTextSizeSp)
+
+        currentAlignment = Layout.Alignment.ALIGN_CENTER
     }
 
     // Thêm phương thức để cập nhật border theo kích thước text
@@ -481,5 +485,60 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             return super.setTypeface(styledTypeface)
         }
         return super.setTypeface(typeface)
+    }
+
+    // Thay thế phương thức hiện tại
+    override fun setTextAlign(alignment: Layout.Alignment): TextSticker {
+        currentAlignment = alignment
+
+        // Gọi phương thức của lớp cha
+        val result = super.setTextAlign(alignment)
+
+        // Cập nhật layout ngay lập tức
+        refreshLayout()
+
+        return result
+    }
+
+    fun refreshLayout() {
+        try {
+            val text = getText() ?: ""
+            if (text.isEmpty()) return
+
+            // Lấy TextPaint và các thông tin cần thiết
+            val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
+            textPaintField.isAccessible = true
+            val textPaint = textPaintField.get(this) as TextPaint
+
+            val textRectField = TextSticker::class.java.getDeclaredField("textRect")
+            textRectField.isAccessible = true
+            val textRect = textRectField.get(this) as android.graphics.Rect
+
+            // Cập nhật alignment trong lớp cha
+            val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
+            alignmentField.isAccessible = true
+            alignmentField.set(this, currentAlignment)
+
+            // Tạo StaticLayout mới với alignment hiện tại
+            val layoutWidth = textRect.width() - 80 // Giữ padding hiện tại
+            val staticLayout = StaticLayout.Builder
+                .obtain(text, 0, text.length, textPaint, layoutWidth)
+                .setAlignment(currentAlignment)
+                .setIncludePad(true)
+                .setLineSpacing(0f, 1.0f)
+                .build()
+
+            // Cập nhật StaticLayout
+            val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
+            staticLayoutField.isAccessible = true
+            staticLayoutField.set(this, staticLayout)
+        } catch (e: Exception) {
+            Log.e("FlexibleTextSticker", "Error refreshing layout", e)
+        }
+    }
+
+    // Cung cấp getter cho alignment hiện tại
+    fun getTextAlignment(): Layout.Alignment {
+        return currentAlignment
     }
 }

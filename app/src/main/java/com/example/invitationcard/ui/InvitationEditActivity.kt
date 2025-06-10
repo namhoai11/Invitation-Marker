@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Layout
 import android.util.Log
 import android.view.LayoutInflater
@@ -49,6 +51,9 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var textColorController: TextColorController
     private var isColorControlVisible = false
 
+    private lateinit var textAlignmentController: TextAlignmentController
+    private var isAlignmentControlVisible = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -77,6 +82,7 @@ class InvitationEditActivity : AppCompatActivity() {
         fontManager = FontManager(this)
         setupFontSizeController()
         setupTextColorController()
+        setupTextAlignmentController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
     }
@@ -271,6 +277,13 @@ class InvitationEditActivity : AppCompatActivity() {
                 stickerView.invalidate()
             }
         }
+
+        findViewById<ImageButton>(R.id.btn_gravityHorizontal)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is TextSticker) {
+                toggleAlignmentControl(currentSticker)
+            }
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -387,6 +400,9 @@ class InvitationEditActivity : AppCompatActivity() {
         }
         if (isColorControlVisible) {
             hideColorControl()
+        }
+        if (isAlignmentControlVisible) { // Thêm điều kiện này
+            hideAlignmentControl()
         }
     }
 
@@ -625,4 +641,90 @@ class InvitationEditActivity : AppCompatActivity() {
             btnItalic?.typeface = Typeface.DEFAULT
         }
     }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupTextAlignmentController() {
+        val textAlignmentControlView = findViewById<View>(R.id.text_alignment_control)
+
+        textAlignmentController = TextAlignmentController(textAlignmentControlView) { newAlignment ->
+            applyTextAlignmentToCurrentSticker(newAlignment)
+        }
+    }
+
+    private fun toggleAlignmentControl(textSticker: TextSticker) {
+        if (isAlignmentControlVisible) {
+            hideAlignmentControl()
+        } else {
+            showAlignmentControl(textSticker)
+        }
+    }
+
+    private fun showAlignmentControl(textSticker: TextSticker) {
+        // Lấy căn lề hiện tại
+        val currentAlignment = if (textSticker is FlexibleTextSticker) {
+            textSticker.getTextAlignment()
+        } else {
+            Layout.Alignment.ALIGN_CENTER // Giá trị mặc định nếu không phải FlexibleTextSticker
+        }
+
+        textAlignmentController.setAlignmentWithoutCallback(currentAlignment)
+        textAlignmentController.show()
+        isAlignmentControlVisible = true
+
+        // Cập nhật trạng thái nút
+        updateAlignmentButtonState(true)
+
+        // Ẩn các control khác
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
+    }
+
+    private fun hideAlignmentControl() {
+        textAlignmentController.hide()
+        isAlignmentControlVisible = false
+        updateAlignmentButtonState(false)
+    }
+
+    private fun updateAlignmentButtonState(isActive: Boolean) {
+        val btnAlign = findViewById<ImageButton>(R.id.btn_gravityHorizontal)
+        if (isActive) {
+            btnAlign?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnAlign?.clearColorFilter()
+        }
+    }
+
+    private fun applyTextAlignmentToCurrentSticker(alignment: Layout.Alignment) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                // Đặt alignment mới
+                currentSticker.setTextAlign(alignment)
+
+                // Đảm bảo refreshLayout được gọi
+                currentSticker.refreshLayout()
+
+                // Force redraw sticker ngay lập tức
+                stickerView.invalidate()
+
+                // Thêm log
+                Log.d("InvitationEditActivity", "Text alignment applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying text alignment", e)
+            }
+        } else if (currentSticker is TextSticker) {
+            try {
+                currentSticker.setTextAlign(alignment)
+                stickerView.invalidate()
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying text alignment", e)
+            }
+        }
+    }
+
+
 }

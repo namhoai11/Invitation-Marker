@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:gravity="center"
+    android:background="#FFFFFF"
+    android:visibility="gone">
+
+    <ImageButton
+        android:id="@+id/btn_align_left"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="Căn trái"
+        android:src="@drawable/align_left" />
+
+    <ImageButton
+        android:id="@+id/btn_align_center"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="Căn giữa"
+        android:src="@drawable/align_center" />
+
+    <ImageButton
+        android:id="@+id/btn_align_right"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_weight="1"
+        android:background="?attr/selectableItemBackground"
+        android:contentDescription="Căn phải"
+        android:src="@drawable/align_right" />
+</LinearLayout>
