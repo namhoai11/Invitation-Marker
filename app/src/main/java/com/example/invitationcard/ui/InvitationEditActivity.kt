@@ -163,6 +163,10 @@ class InvitationEditActivity : AppCompatActivity() {
                         sticker.setShowBorder(true)
                         showTextEditTools()
                         updateSizeControllerFromSticker(sticker)
+
+                        // Thêm: Cập nhật trạng thái các nút theo sticker được chọn
+                        updateBoldButtonState(sticker.isBold())
+                        updateItalicButtonState(sticker.isItalic())
                     }
 
                     stickerView.invalidate()
@@ -240,6 +244,31 @@ class InvitationEditActivity : AppCompatActivity() {
             val currentSticker = getCurrentSticker()
             if (currentSticker is TextSticker) {
                 toggleColorControl(currentSticker)
+            }
+        }
+
+        findViewById<TextView>(R.id.btn_Bold)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                // Toggle trạng thái bold
+                val isBold = currentSticker.toggleBold()
+                // Cập nhật giao diện nút
+                updateBoldButtonState(isBold)
+                // Redraw sticker
+                stickerView.invalidate()
+            }
+        }
+
+        // Xử lý nút Italic
+        findViewById<TextView>(R.id.btn_Italic)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                // Toggle trạng thái italic
+                val isItalic = currentSticker.toggleItalic()
+                // Cập nhật giao diện nút
+                updateItalicButtonState(isItalic)
+                // Redraw sticker
+                stickerView.invalidate()
             }
         }
     }
@@ -570,6 +599,30 @@ class InvitationEditActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying text color: ${e.message}")
             }
+        }
+    }
+
+    // Cập nhật trạng thái nút Bold
+    private fun updateBoldButtonState(isActive: Boolean) {
+        val btnBold = findViewById<TextView>(R.id.btn_Bold)
+        if (isActive) {
+            btnBold?.setTextColor(resources.getColor(R.color.green, null))
+            btnBold?.typeface = Typeface.DEFAULT_BOLD
+        } else {
+            btnBold?.setTextColor(resources.getColor(android.R.color.black, null))
+            btnBold?.typeface = Typeface.DEFAULT
+        }
+    }
+
+    // Cập nhật trạng thái nút Italic
+    private fun updateItalicButtonState(isActive: Boolean) {
+        val btnItalic = findViewById<TextView>(R.id.btn_Italic)
+        if (isActive) {
+            btnItalic?.setTextColor(resources.getColor(R.color.green, null))
+            btnItalic?.typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+        } else {
+            btnItalic?.setTextColor(resources.getColor(android.R.color.black, null))
+            btnItalic?.typeface = Typeface.DEFAULT
         }
     }
 }

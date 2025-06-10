@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -37,6 +38,13 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     // Thêm biến lưu trữ màu
     private var currentTextColor: Int = Color.BLACK
+
+    private var isBold: Boolean = false
+    private var isItalic: Boolean = false
+    private var currentTypeface: Typeface = Typeface.DEFAULT
+
+    fun isBold(): Boolean = isBold
+    fun isItalic(): Boolean = isItalic
 
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
@@ -392,5 +400,86 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     // Phương thức custom để get màu
     fun getCustomTextColor(): Int {
         return currentTextColor
+    }
+
+    // Toggle bold
+    fun toggleBold(): Boolean {
+        isBold = !isBold
+        updateTypeface()
+        return isBold
+    }
+
+    // Toggle italic
+    fun toggleItalic(): Boolean {
+        isItalic = !isItalic
+        updateTypeface()
+        return isItalic
+    }
+
+    // Set bold
+    fun setBold(bold: Boolean): Boolean {
+        if (isBold != bold) {
+            isBold = bold
+            updateTypeface()
+        }
+        return isBold
+    }
+
+    // Set italic
+    fun setItalic(italic: Boolean): Boolean {
+        if (isItalic != italic) {
+            isItalic = italic
+            updateTypeface()
+        }
+        return isItalic
+    }
+
+    // Cập nhật typeface dựa trên trạng thái bold và italic
+    private fun updateTypeface() {
+        val style = when {
+            isBold && isItalic -> Typeface.BOLD_ITALIC
+            isBold -> Typeface.BOLD
+            isItalic -> Typeface.ITALIC
+            else -> Typeface.NORMAL
+        }
+
+        // Lưu ý: nếu đã có custom font, cần giữ lại font đó
+        if (currentTypeface != Typeface.DEFAULT) {
+            try {
+                // Tạo typeface mới từ typeface hiện tại với style mới
+                val newTypeface = Typeface.create(currentTypeface, style)
+                super.setTypeface(newTypeface)
+            } catch (e: Exception) {
+                Log.e("FlexibleTextSticker", "Error updating typeface style", e)
+                // Fallback
+                super.setTypeface(Typeface.create(Typeface.DEFAULT, style))
+            }
+        } else {
+            super.setTypeface(Typeface.create(Typeface.DEFAULT, style))
+        }
+
+        // Cập nhật lại kích thước và bounds
+        updateBoundsToFitText()
+        updateRealBoundsToText()
+    }
+
+    // Override phương thức setTypeface để cập nhật currentTypeface
+    override fun setTypeface(typeface: Typeface?): TextSticker {
+        if (typeface != null) {
+            currentTypeface = typeface
+
+            // Giữ lại style nếu đang bold hoặc italic
+            val style = when {
+                isBold && isItalic -> Typeface.BOLD_ITALIC
+                isBold -> Typeface.BOLD
+                isItalic -> Typeface.ITALIC
+                else -> Typeface.NORMAL
+            }
+
+            // Tạo typeface mới từ typeface được cung cấp với style hiện tại
+            val styledTypeface = Typeface.create(typeface, style)
+            return super.setTypeface(styledTypeface)
+        }
+        return super.setTypeface(typeface)
     }
 }
