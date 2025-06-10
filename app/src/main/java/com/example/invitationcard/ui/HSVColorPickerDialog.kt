@@ -42,6 +42,9 @@ class HSVColorPickerDialog(
         dialog.setContentView(view)
         dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
 
+        dialog.setCanceledOnTouchOutside(false)  // Ngăn đóng dialog khi chạm ra ngoài
+        dialog.setCancelable(false)  // Ngăn đóng dialog khi nhấn nút Back
+
         // Thiết lập chiều rộng bằng 90% chiều rộng màn hình
         dialog.window?.setLayout(
             (context.resources.displayMetrics.widthPixels * 0.9).toInt(),
@@ -67,6 +70,18 @@ class HSVColorPickerDialog(
 
         // Thiết lập gradient hue
         setupHueGradient()
+
+        // Thiết lập vị trí ban đầu cho các thumb
+        view.post {
+            // Hue slider - đỏ ban đầu (hue = 0)
+            updateHueThumb(0f)
+
+            // Saturation slider - mặc định saturation = 1 (ở cuối thanh trượt)
+            updateSaturationThumb(saturationGradient.width.toFloat())
+
+            // Value slider - mặc định value = 1 (ở cuối thanh trượt)
+            updateValueThumb(valueGradient.width.toFloat())
+        }
     }
 
 //    private fun setupHueGradient() {
@@ -104,36 +119,26 @@ class HSVColorPickerDialog(
     private fun setupHueGradient() {
         hueGradient.viewTreeObserver.addOnGlobalLayoutListener(object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                // Chỉ chạy một lần khi view được vẽ xong
                 hueGradient.viewTreeObserver.removeOnGlobalLayoutListener(this)
 
-                // Lúc này view đã có kích thước thực
                 val width = hueGradient.width.toFloat()
                 val hueColors = intArrayOf(
                     Color.RED, Color.YELLOW, Color.GREEN, Color.CYAN,
                     Color.BLUE, Color.MAGENTA, Color.RED
                 )
 
-                val linearGradient = LinearGradient(
-                    0f, 0f, width, 0f,
-                    hueColors, null, Shader.TileMode.CLAMP
-                )
+                // Sử dụng phương thức tái sử dụng
+                val gradientDrawable = createGradientWithRoundedCorners(hueColors, width)
+                if (gradientDrawable != null) {
+                    hueGradient.background = gradientDrawable
 
-                val paint = Paint()
-                paint.shader = linearGradient
-
-                hueGradient.background = ShapeDrawable().apply {
-                    shape = RectShape()
-                    this.paint.set(paint)
+                    // Cập nhật gradient cho saturation và value với cùng kiểu bo góc
+                    updateSaturationGradient()
+                    updateValueGradient()
                 }
-
-                // Cập nhật gradient cho saturation và value
-                updateSaturationGradient()
-                updateValueGradient()
             }
         })
     }
-
     @SuppressLint("ClickableViewAccessibility")
     private fun setupSliders(view: View) {
         // Hue slider
@@ -183,40 +188,104 @@ class HSVColorPickerDialog(
     }
 
     private fun updateHueThumb(x: Float) {
-        hueThumb.x = x - hueThumb.width / 2
+        // Tính toán giới hạn để thumb luôn nằm trong phạm vi gradient
+        val minX = 0f
+        val maxX = hueGradient.width.toFloat() - hueThumb.width
+
+        // Giới hạn vị trí x trong khoảng [minX, maxX]
+        val constrainedX = x - hueThumb.width / 2
+        hueThumb.x = constrainedX.coerceIn(minX, maxX)
     }
 
     private fun updateSaturationThumb(x: Float) {
-        saturationThumb.x = x - saturationThumb.width / 2
+        val minX = 0f
+        val maxX = saturationGradient.width.toFloat() - saturationThumb.width
+
+        val constrainedX = x - saturationThumb.width / 2
+        saturationThumb.x = constrainedX.coerceIn(minX, maxX)
     }
 
     private fun updateValueThumb(x: Float) {
-        valueThumb.x = x - valueThumb.width / 2
+        val minX = 0f
+        val maxX = valueGradient.width.toFloat() - valueThumb.width
+
+        val constrainedX = x - valueThumb.width / 2
+        valueThumb.x = constrainedX.coerceIn(minX, maxX)
     }
 
     private fun updateSaturationGradient() {
         val hsvColor = Color.HSVToColor(floatArrayOf(hue, 1f, 1f))
-        val gradient = GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(Color.WHITE, hsvColor)
-        )
-        gradient.cornerRadius = 10f
-        saturationGradient.background = gradient
+        val colors = intArrayOf(Color.WHITE, hsvColor)
+
+        val width = saturationGradient.width.toFloat()
+        val gradientDrawable = createGradientWithRoundedCorners(colors, width)
+
+        if (gradientDrawable != null) {
+            saturationGradient.background = gradientDrawable
+        } else {
+            // Fallback nếu width chưa sẵn sàng
+            val gradient = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                colors
+            )
+            gradient.cornerRadius = 10f * context.resources.displayMetrics.density
+            saturationGradient.background = gradient
+        }
     }
 
     private fun updateValueGradient() {
         val hsvColor = Color.HSVToColor(floatArrayOf(hue, saturation, 1f))
-        val gradient = GradientDrawable(
-            GradientDrawable.Orientation.LEFT_RIGHT,
-            intArrayOf(Color.BLACK, hsvColor)
-        )
-        gradient.cornerRadius = 10f
-        valueGradient.background = gradient
+        val colors = intArrayOf(Color.BLACK, hsvColor)
+
+        val width = valueGradient.width.toFloat()
+        val gradientDrawable = createGradientWithRoundedCorners(colors, width)
+
+        if (gradientDrawable != null) {
+            valueGradient.background = gradientDrawable
+        } else {
+            // Fallback nếu width chưa sẵn sàng
+            val gradient = GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                colors
+            )
+            gradient.cornerRadius = 10f * context.resources.displayMetrics.density
+            valueGradient.background = gradient
+        }
     }
 
     private fun updateColorPreview() {
         val color = Color.HSVToColor(floatArrayOf(hue, saturation, value))
         colorPreview.backgroundTintList = android.content.res.ColorStateList.valueOf(color)
+    }
+
+    // Thêm phương thức này để tái sử dụng logic bo góc
+    private fun createGradientWithRoundedCorners(colors: IntArray, width: Float): ShapeDrawable? {
+        if (width <= 0) return null
+
+        // Tạo hình dạng bo góc
+        val cornerRadius = 10f * context.resources.displayMetrics.density
+        val outerRadii = floatArrayOf(
+            cornerRadius, cornerRadius, cornerRadius, cornerRadius,
+            cornerRadius, cornerRadius, cornerRadius, cornerRadius
+        )
+
+        val roundRectShape = android.graphics.drawable.shapes.RoundRectShape(
+            outerRadii, null, null
+        )
+
+        // Tạo gradient
+        val linearGradient = LinearGradient(
+            0f, 0f, width, 0f,
+            colors, null, Shader.TileMode.CLAMP
+        )
+
+        val paint = Paint()
+        paint.shader = linearGradient
+        paint.isAntiAlias = true
+
+        return ShapeDrawable(roundRectShape).apply {
+            this.paint.set(paint)
+        }
     }
 
     private fun setupActionButtons(view: View, dialog: Dialog) {
