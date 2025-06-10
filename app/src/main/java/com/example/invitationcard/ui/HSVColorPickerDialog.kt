@@ -20,6 +20,7 @@ import com.example.invitationcard.R
 
 class HSVColorPickerDialog(
     private val context: Context,
+    initialColor: Int? = null,
     private val onColorSelected: (Int) -> Unit
 ) {
 
@@ -34,6 +35,22 @@ class HSVColorPickerDialog(
     private lateinit var hueGradient: View
     private lateinit var saturationGradient: View
     private lateinit var valueGradient: View
+
+
+    init {
+        if (initialColor != null) {
+            setInitialColor(initialColor)
+        }
+    }
+
+    // Thêm phương thức để đặt màu từ bên ngoài
+    private fun setInitialColor(color: Int) {
+        val hsv = FloatArray(3)
+        Color.colorToHSV(color, hsv)
+        hue = hsv[0]
+        saturation = hsv[1]
+        value = hsv[2]
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     fun show() {
@@ -50,6 +67,26 @@ class HSVColorPickerDialog(
             (context.resources.displayMetrics.widthPixels * 0.9).toInt(),
             android.view.WindowManager.LayoutParams.WRAP_CONTENT
         )
+
+        view.post {
+            // Đặt vị trí của hue thumb dựa trên hue (0-360)
+            val huePosition = (hue / 360f) * hueGradient.width
+            updateHueThumb(huePosition)
+
+            // Đặt vị trí của saturation thumb dựa trên saturation (0-1)
+            val saturationPosition = saturation * saturationGradient.width
+            updateSaturationThumb(saturationPosition)
+
+            // Đặt vị trí của value thumb dựa trên value (0-1)
+            val valuePosition = value * valueGradient.width
+            updateValueThumb(valuePosition)
+
+            // Cập nhật gradients và preview
+            updateSaturationGradient()
+            updateValueGradient()
+            updateColorPreview()
+        }
+
 
         initViews(view)
         setupSliders(view)

@@ -61,7 +61,7 @@ class TextColorController(
     // THÊM: Setup color picker wheel click
     private fun setupColorPickerWheel() {
         colorPickerWheel.setOnClickListener {
-            showColorPickerDialog()
+            showHSVColorPickerDialog()
         }
     }
 
@@ -69,15 +69,35 @@ class TextColorController(
     private fun showColorPickerDialog() {
         val colorPickerDialog = ColorPickerDialog(controlView.context) { selectedColor ->
             selectColor(selectedColor)
-            // Reset basic color selection since this is a custom color
             resetBasicColorSelection()
-            // Update adapters
             defaultColorsAdapter.setSelectedColor(selectedColor)
             foilColorsAdapter.setSelectedColor(selectedColor)
             glitterColorsAdapter.setSelectedColor(selectedColor)
         }
+        // Đặt màu ban đầu là màu hiện tại đang được chọn
+        colorPickerDialog.setInitialColor(selectedColor)
+
         colorPickerDialog.show()
     }
+
+    private fun showHSVColorPickerDialog() {
+        val hsvColorPickerDialog = HSVColorPickerDialog(controlView.context,selectedColor) { selectedColor ->
+            selectColor(selectedColor)
+            resetBasicColorSelection()
+            defaultColorsAdapter.setSelectedColor(selectedColor)
+            foilColorsAdapter.setSelectedColor(selectedColor)
+            glitterColorsAdapter.setSelectedColor(selectedColor)
+        }
+        // Đặt màu ban đầu là màu hiện tại đang được chọn
+//        colorPickerDialog.setInitialColor(selectedColor)
+
+        hsvColorPickerDialog.show()
+    }
+
+//    private fun showHSVColorPicker(initialColor: Int) {
+//        val hsvDialog = HSVColorPickerDialog(controlView.context, initialColor, onColorSelected)
+//        hsvDialog.show()
+//    }
 
     // THÊM: Reset basic color selection
     private fun resetBasicColorSelection() {

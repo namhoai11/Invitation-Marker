@@ -33,6 +33,11 @@ class ColorPickerDialog(
         dialog.show()
     }
 
+    // THÊM: Phương thức để đặt màu ban đầu
+    fun setInitialColor(color: Int) {
+        selectedColor = color
+    }
+
     private fun setupColorButtons(view: View, dialog: Dialog) {
         val colors = mapOf(
             R.id.dialog_color_red to Color.RED,
@@ -70,7 +75,7 @@ class ColorPickerDialog(
         // Customize button - Show HSV picker
         view.findViewById<TextView>(R.id.btn_customize)?.setOnClickListener {
             dialog.dismiss()
-            showHSVColorPicker()
+            showHSVColorPicker(selectedColor)  // Truyền màu hiện tại
         }
 
         // Selected colors button
@@ -90,8 +95,8 @@ class ColorPickerDialog(
         }
     }
 
-    private fun showHSVColorPicker() {
-        val hsvDialog = HSVColorPickerDialog(context, onColorSelected)
+    private fun showHSVColorPicker(initialColor: Int) {
+        val hsvDialog = HSVColorPickerDialog(context, initialColor, onColorSelected)
         hsvDialog.show()
     }
 }

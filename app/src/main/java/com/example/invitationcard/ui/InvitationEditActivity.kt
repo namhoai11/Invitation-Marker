@@ -547,17 +547,17 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     // THÊM: Phương thức updateColorControllerFromSticker
-    private fun updateColorControllerFromSticker(sticker: Sticker) {
-        try {
-            if (sticker is FlexibleTextSticker && isColorControlVisible) {
-                val currentColor = sticker.getCustomTextColor()
-                textColorController.setColor(currentColor)
-                Log.d("InvitationEditActivity", "Updated color controller to: #${Integer.toHexString(currentColor)}")
-            }
-        } catch (e: Exception) {
-            Log.e("InvitationEditActivity", "Error updating color controller", e)
-        }
-    }
+//    private fun updateColorControllerFromSticker(sticker: Sticker) {
+//        try {
+//            if (sticker is FlexibleTextSticker && isColorControlVisible) {
+//                val currentColor = sticker.getCustomTextColor()
+//                textColorController.setColor(currentColor)
+//                Log.d("InvitationEditActivity", "Updated color controller to: #${Integer.toHexString(currentColor)}")
+//            }
+//        } catch (e: Exception) {
+//            Log.e("InvitationEditActivity", "Error updating color controller", e)
+//        }
+//    }
 
     private fun applyTextColorToCurrentSticker(color: Int) {
         val currentSticker = getCurrentSticker()

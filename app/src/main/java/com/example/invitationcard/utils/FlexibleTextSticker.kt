@@ -25,7 +25,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     // Thêm các thuộc tính cho border
     private val borderPaint = Paint().apply {
-        color = android.graphics.Color.GREEN
+        color = Color.GREEN
         alpha = 255
         strokeWidth = 8f
         style = Paint.Style.STROKE

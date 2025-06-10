@@ -52,10 +52,10 @@ class ColorAdapter(
 
     override fun getItemCount(): Int = colors.size
 
-    fun updateColors(newColors: List<ColorItem>) {
-        colors = newColors
-        notifyDataSetChanged()
-    }
+//    fun updateColors(newColors: List<ColorItem>) {
+//        colors = newColors
+//        notifyDataSetChanged()
+//    }
 
     fun setSelectedColor(colorValue: Int) {
         val newPosition = colors.indexOfFirst { it.colorValue == colorValue }
