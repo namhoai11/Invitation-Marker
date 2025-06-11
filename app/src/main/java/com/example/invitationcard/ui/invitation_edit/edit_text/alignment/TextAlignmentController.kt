@@ -1,4 +1,4 @@
-package com.example.invitationcard.ui
+package com.example.invitationcard.ui.invitation_edit.edit_text.alignment
 
 import android.graphics.Color
 import android.text.Layout

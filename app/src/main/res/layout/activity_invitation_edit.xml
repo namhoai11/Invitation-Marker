@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F0F0F0"
-    tools:context=".ui.InvitationEditActivity">
+    tools:context=".ui.invitation_edit.InvitationEditActivity">
 
     <!-- Thanh tiêu đề -->
     <androidx.constraintlayout.widget.ConstraintLayout

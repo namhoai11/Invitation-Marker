@@ -1,4 +1,4 @@
-package com.example.invitationcard.ui
+package com.example.invitationcard.ui.invitation_edit
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -7,8 +7,6 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.Layout
 import android.util.Log
 import android.view.LayoutInflater
@@ -26,6 +24,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.invitationcard.R
 import com.example.invitationcard.model.FontItem
+import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSelectionBottomSheet
+import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSizeController
+import com.example.invitationcard.ui.invitation_edit.edit_text.alignment.TextAlignmentController
+import com.example.invitationcard.ui.invitation_edit.edit_text.color.TextColorController
+import com.example.invitationcard.ui.invitation_edit.edit_text.TextEditorActivity
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
 import com.xiaopo.flying.sticker.Sticker

@@ -1,4 +1,4 @@
-package com.example.invitationcard.ui
+package com.example.invitationcard.ui.invitation_edit.edit_text.color
 
 import android.annotation.SuppressLint
 import android.app.Dialog
@@ -9,7 +9,6 @@ import android.graphics.Paint
 import android.graphics.Shader
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.ShapeDrawable
-import android.graphics.drawable.shapes.RectShape
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
