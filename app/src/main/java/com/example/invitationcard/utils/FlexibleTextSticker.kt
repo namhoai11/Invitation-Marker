@@ -12,6 +12,7 @@ import android.text.TextPaint
 import android.util.Log
 import android.util.TypedValue
 import com.xiaopo.flying.sticker.TextSticker
+import kotlin.math.ceil
 
 class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
@@ -51,6 +52,11 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     private var lineHeightPercent: Int = 120
 
     fun getLineHeightPercent(): Int = lineHeightPercent
+
+    private var letterSpacing: Float = 0f  // Giá trị mặc định = 0
+
+    // Thêm getter
+    fun getLetterSpacing(): Float = letterSpacing
 
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
@@ -509,18 +515,23 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             val text = getText() ?: ""
             if (text.isEmpty()) return
 
-            Log.d("FlexibleTextSticker", "Refreshing layout with line height: $lineHeightPercent%")
+            // Log thông tin debug
+            Log.d("FlexibleTextSticker", "Refreshing layout - Line height: $lineHeightPercent%, Letter spacing: $letterSpacing")
 
-            // Lấy TextPaint và các thông tin cần thiết
+            // Lấy TextPaint
             val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
             textPaintField.isAccessible = true
             val textPaint = textPaintField.get(this) as TextPaint
 
+            // Đảm bảo letter spacing được áp dụng
+            textPaint.letterSpacing = letterSpacing
+
+            // Lấy textRect
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
             val textRect = textRectField.get(this) as android.graphics.Rect
 
-            // Lấy giá trị lineSpacing hiện tại
+            // Lấy giá trị lineSpacing
             val lineSpacingMultiplierField = TextSticker::class.java.getDeclaredField("lineSpacingMultiplier")
             lineSpacingMultiplierField.isAccessible = true
             val lineSpacingMultiplier = lineSpacingMultiplierField.get(this) as Float
@@ -529,17 +540,25 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             lineSpacingExtraField.isAccessible = true
             val lineSpacingExtra = lineSpacingExtraField.get(this) as Float
 
-            Log.d("FlexibleTextSticker", "Using multiplier: $lineSpacingMultiplier, extra: $lineSpacingExtra")
+            // THAY ĐỔI QUAN TRỌNG: Tính toán chiều rộng cần thiết cho text với spacing mới
+            val baseTextWidth = textPaint.measureText(text)
 
-            // Tạo StaticLayout mới với lineSpacing cập nhật
+            // Điều chỉnh chiều rộng layout theo letter spacing
+            // Nếu letter spacing > 0, cần mở rộng chiều rộng để tránh xuống dòng
+            val expandRatio = if (letterSpacing > 0) (1 + letterSpacing * 2) else 1f
+            val neededWidth = ceil((baseTextWidth * expandRatio).toDouble()).toInt().coerceAtLeast(textRect.width() - 80)
+
+            Log.d("FlexibleTextSticker", "Base width: $baseTextWidth, Expanded width: $neededWidth")
+
+            // Tạo StaticLayout với chiều rộng đủ lớn để chứa text có spacing mới
             val staticLayout = StaticLayout.Builder
-                .obtain(text, 0, text.length, textPaint, textRect.width() - 80)
+                .obtain(text, 0, text.length, textPaint, neededWidth)
                 .setAlignment(currentAlignment)
-                .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier) // Quan trọng!
+                .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier) // Giữ nguyên line height
                 .setIncludePad(true)
                 .build()
 
-            // Cập nhật alignment trong lớp cha
+            // Cập nhật alignment trong TextSticker
             val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
             alignmentField.isAccessible = true
             alignmentField.set(this, currentAlignment)
@@ -549,7 +568,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             staticLayoutField.isAccessible = true
             staticLayoutField.set(this, staticLayout)
 
-            Log.d("FlexibleTextSticker", "Layout refreshed successfully")
+            Log.d("FlexibleTextSticker", "Layout refreshed successfully - Layout width: ${staticLayout.width}, Height: ${staticLayout.height}")
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error refreshing layout", e)
         }
@@ -645,6 +664,30 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             Log.d("FlexibleTextSticker", "StaticLayout height: $layoutHeight pixels")
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error checking line height: ${e.message}")
+        }
+    }
+
+
+    fun setLetterSpacing(spacing: Float) {
+        try {
+            letterSpacing = spacing
+
+            // Lấy TextPaint
+            val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
+            textPaintField.isAccessible = true
+            val textPaint = textPaintField.get(this) as TextPaint
+
+            // Đặt letterSpacing
+            textPaint.letterSpacing = spacing
+
+            Log.d("FlexibleTextSticker", "Set letter spacing to $spacing")
+
+            // Tạo lại layout với chiều rộng phù hợp
+            refreshLayout()
+
+            // Không thay đổi bounds hay border
+        } catch (e: Exception) {
+            Log.e("FlexibleTextSticker", "Error setting letter spacing: ${e.message}", e)
         }
     }
 }

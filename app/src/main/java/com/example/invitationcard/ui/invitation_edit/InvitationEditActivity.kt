@@ -32,6 +32,7 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.alignment.TextAli
 import com.example.invitationcard.ui.invitation_edit.edit_text.color.TextColorController
 import com.example.invitationcard.ui.invitation_edit.edit_text.TextEditorActivity
 import com.example.invitationcard.ui.invitation_edit.edit_text.lineheight.LineHeightController
+import com.example.invitationcard.ui.invitation_edit.edit_text.linewidth.LetterSpacingController
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
 import com.xiaopo.flying.sticker.Sticker
@@ -63,6 +64,9 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var lineHeightController: LineHeightController
     private var isLineHeightControlVisible = false
 
+    private lateinit var letterSpacingController: LetterSpacingController
+    private var isLetterSpacingControlVisible = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -93,6 +97,7 @@ class InvitationEditActivity : AppCompatActivity() {
         setupTextColorController()
         setupTextAlignmentController()
         setupLineHeightController()
+        setupLetterSpacingController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
     }
@@ -301,6 +306,12 @@ class InvitationEditActivity : AppCompatActivity() {
                 toggleLineHeightControl(currentSticker)
             }
         }
+        findViewById<ImageButton>(R.id.btn_editTextWidth)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                toggleLetterSpacingControl(currentSticker)
+            }
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -424,6 +435,10 @@ class InvitationEditActivity : AppCompatActivity() {
 
         if (isLineHeightControlVisible) {
             hideLineHeightControl()
+        }
+
+        if (isLetterSpacingControlVisible) {
+            hideLetterSpacingControl()
         }
     }
 
@@ -845,4 +860,97 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupLetterSpacingController() {
+        val letterSpacingControlView = findViewById<View>(R.id.letter_spacing_control)
+
+        letterSpacingControlView.setOnTouchListener { _, _ ->
+            // Chặn sự kiện chạm
+            true
+        }
+
+        letterSpacingController = LetterSpacingController(letterSpacingControlView) { newSpacing ->
+            applyLetterSpacingToCurrentSticker(newSpacing)
+        }
+    }
+
+    private fun toggleLetterSpacingControl(textSticker: TextSticker) {
+        if (isLetterSpacingControlVisible) {
+            hideLetterSpacingControl()
+        } else {
+            showLetterSpacingControl(textSticker)
+        }
+    }
+
+    private fun showLetterSpacingControl(textSticker: TextSticker) {
+        // Lấy letter spacing hiện tại
+        val currentSpacing = getCurrentLetterSpacing(textSticker)
+        letterSpacingController.setLetterSpacingWithoutCallback(currentSpacing)
+        letterSpacingController.show()
+        isLetterSpacingControlVisible = true
+
+        // Cập nhật trạng thái nút
+        updateLetterSpacingButtonState(true)
+
+        // Ẩn các control khác
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
+        if (isAlignmentControlVisible) {
+            hideAlignmentControl()
+        }
+        if (isLineHeightControlVisible) {
+            hideLineHeightControl()
+        }
+    }
+
+    private fun hideLetterSpacingControl() {
+        letterSpacingController.hide()
+        isLetterSpacingControlVisible = false
+        updateLetterSpacingButtonState(false)
+    }
+
+    private fun updateLetterSpacingButtonState(isActive: Boolean) {
+        val btnLetterSpacing = findViewById<ImageButton>(R.id.btn_editTextWidth)
+        if (isActive) {
+            btnLetterSpacing?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnLetterSpacing?.clearColorFilter()
+        }
+    }
+
+    private fun getCurrentLetterSpacing(textSticker: TextSticker): Float {
+        return if (textSticker is FlexibleTextSticker) {
+            textSticker.getLetterSpacing()
+        } else {
+            0f // Giá trị mặc định
+        }
+    }
+
+    private fun applyLetterSpacingToCurrentSticker(spacing: Float) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                Log.d("InvitationEditActivity", "Applying letter spacing: $spacing")
+
+                // Đặt spacing mới
+                currentSticker.setLetterSpacing(spacing)
+
+                // Force redraw
+                stickerView.invalidate()
+
+                // Đặt một handler để vẽ lại sau một khoảng thời gian nhỏ (đề phòng)
+                Handler(Looper.getMainLooper()).postDelayed({
+                    stickerView.invalidate()
+                }, 50)
+
+                Log.d("InvitationEditActivity", "Letter spacing applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying letter spacing: ${e.message}", e)
+            }
+        }
+    }
 }
