@@ -172,88 +172,88 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             textPaintField.isAccessible = true
             val textPaint = textPaintField.get(this) as TextPaint
 
-            // Log kích thước thực tế để kiểm tra
-            Log.d("FlexibleTextSticker", "Current textPaint size: ${textPaint.textSize} pixels")
+            // Lấy giá trị lineSpacing
+            val lineSpacingMultiplierField = TextSticker::class.java.getDeclaredField("lineSpacingMultiplier")
+            lineSpacingMultiplierField.isAccessible = true
+            val lineSpacingMultiplier = lineSpacingMultiplierField.get(this) as Float
 
-            // ĐO CHÍNH XÁC chiều rộng text
-            val textWidth = textPaint.measureText(text).toInt()
+            val lineSpacingExtraField = TextSticker::class.java.getDeclaredField("lineSpacingExtra")
+            lineSpacingExtraField.isAccessible = true
+            val lineSpacingExtra = lineSpacingExtraField.get(this) as Float
 
-            // Log chiều rộng text để kiểm tra
-            Log.d("FlexibleTextSticker", "Text width: $textWidth pixels for text: '$text'")
+            // Tách text thành các dòng
+            val lines = text.split("\n")
 
-            // Thêm padding phù hợp
-            val paddingHorizontal = 40
-            val paddingVertical = 30
+            // Tính chiều rộng dựa trên dòng dài nhất
+            var maxLineWidth = 0f
+            for (line in lines) {
+                // Tính toán chiều rộng của dòng hiện tại với letter spacing
+                val lineWidth = calculateTextWidthWithLetterSpacing(line, textPaint)
+                maxLineWidth = maxOf(maxLineWidth, lineWidth)
+            }
 
-            // Tính chiều cao của text
-            val metrics = textPaint.fontMetrics
-            val lineHeight = (metrics.descent - metrics.ascent).toInt()
+            // Tính chiều cao chính xác của text
+            val fontMetrics = textPaint.fontMetrics
+            val lineHeight = (fontMetrics.descent - fontMetrics.ascent)
+            val totalLineHeight = lineHeight * lineSpacingMultiplier
+            val textHeight = totalLineHeight * lines.size + lineSpacingExtra * (lines.size - 1)
 
-            // Tính toán dựa trên số dòng (nếu có xuống dòng)
-            val lineCount = Math.max(text.count { it == '\n' } + 1, 1)
-            val textHeight = lineHeight * lineCount
+            // Đặt padding vừa đủ quanh text
+            val paddingHorizontal = 20
+            val paddingVertical = 20
 
-            // Cập nhật cả realBounds và textRect
+            // Tính kích thước tối thiểu cần thiết cho bounds
+            val minWidth = ceil(maxLineWidth + paddingHorizontal * 2).toInt().coerceAtLeast(100)
+            val minHeight = ceil(textHeight + paddingVertical * 2).toInt().coerceAtLeast(40)
+
+            Log.d("FlexibleTextSticker", "Text: '$text', Lines: ${lines.size}, Max width: $maxLineWidth, Height: $textHeight")
+            Log.d("FlexibleTextSticker", "Required width: $minWidth, height: $minHeight")
+
+            // Cập nhật bounds
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
             val realBounds = realBoundsField.get(this) as android.graphics.Rect
 
-            // Tính kích thước mới
-            val minWidth = Math.max(textWidth + paddingHorizontal * 2, 150)
-            val minHeight = Math.max(textHeight + paddingVertical * 2, 60)
-
-            // Xử lý đặc biệt cho lần đầu tiên
             if (isInitialSetup) {
-                // Đặt bounds ban đầu với điểm neo ở trung tâm (0,0)
+                // Lần đầu setup: đặt bounds với điểm neo ở trung tâm
                 realBounds.set(-minWidth/2, -minHeight/2, minWidth/2, minHeight/2)
                 isInitialSetup = false
-                Log.d("FlexibleTextSticker", "Initial setup with centered bounds")
             } else {
-                // Lưu lại kích thước cũ
-                val oldWidth = realBounds.width()
-                val oldHeight = realBounds.height()
+                // Lưu vị trí trung tâm hiện tại
+                val centerX = realBounds.exactCenterX()
+                val centerY = realBounds.exactCenterY()
 
-                // Tính độ chênh lệch
-                val widthDiff = (minWidth - oldWidth) / 2
-                val heightDiff = (minHeight - oldHeight) / 2
-
-                // Mở rộng bounds theo cả 4 hướng từ trung tâm
-                realBounds.left -= widthDiff
-                realBounds.top -= heightDiff
-                realBounds.right += widthDiff
-                realBounds.bottom += heightDiff
+                // Cập nhật bounds với trung tâm giữ nguyên
+                realBounds.set(
+                    (centerX - minWidth / 2).toInt(),
+                    (centerY - minHeight / 2).toInt(),
+                    (centerX + minWidth / 2).toInt(),
+                    (centerY + minHeight / 2).toInt()
+                )
             }
 
-            // Cập nhật textRect và drawable
+            // Cập nhật textRect
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
             val textRect = textRectField.get(this) as android.graphics.Rect
             textRect.set(realBounds)
 
+            // Cập nhật drawable
             val drawableField = TextSticker::class.java.getDeclaredField("drawable")
             drawableField.isAccessible = true
             val drawable = drawableField.get(this) as? android.graphics.drawable.Drawable
-            drawable?.setBounds(
-                realBounds.left,
-                realBounds.top,
-                realBounds.right,
-                realBounds.bottom
-            )
+            drawable?.setBounds(realBounds)
 
-            // Tạo StaticLayout mới với chiều rộng thích hợp
-            val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
-            alignmentField.isAccessible = true
-            val alignment = alignmentField.get(this) as Layout.Alignment
-
-            // Tạo layout với chiều rộng phù hợp cho text
+            // Tạo StaticLayout với alignment hiện tại
             val layoutWidth = minWidth - paddingHorizontal
             val staticLayout = StaticLayout.Builder
                 .obtain(text, 0, text.length, textPaint, layoutWidth)
-                .setAlignment(alignment)
+                .setAlignment(currentAlignment)
+                .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier)
                 .setIncludePad(true)
-                .setLineSpacing(0f, 1.0f)
                 .build()
 
+            // Cập nhật StaticLayout
             val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
             staticLayoutField.isAccessible = true
             staticLayoutField.set(this, staticLayout)
@@ -261,6 +261,29 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             Log.d("FlexibleTextSticker", "Updated bounds: left=${realBounds.left}, top=${realBounds.top}, right=${realBounds.right}, bottom=${realBounds.bottom}")
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error updating bounds", e)
+        }
+    }
+
+    // Hàm mới để tính chiều rộng text có xét đến letter spacing
+    private fun calculateTextWidthWithLetterSpacing(text: String, textPaint: TextPaint): Float {
+        if (text.isEmpty()) return 0f
+
+        // Chiều rộng cơ bản của văn bản
+        val baseWidth = textPaint.measureText(text)
+
+        // Điều chỉnh theo letter spacing (nếu có)
+        return if (letterSpacing != 0f) {
+            // Công thức cải tiến cho độ chính xác hơn
+            if (letterSpacing > 0) {
+                // Với letter spacing dương (giãn chữ), ta cần thêm không gian
+                val expandRatio = 1f + letterSpacing * (text.length - 1f) / text.length
+                baseWidth * expandRatio * 1.02f  // Giảm từ 1.05f xuống 1.02f
+            } else {
+                // Với letter spacing âm (thu chữ), ta chỉ cần một chút padding
+                baseWidth * 1.01f
+            }
+        } else {
+            baseWidth * 1.01f  // Thêm 1% margin cho an toàn
         }
     }
 
@@ -303,7 +326,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
                 return
             }
 
-            // Chỉ vẽ border khi showCustomBorder = true
+            // Vẽ border bám sát theo bounds đã tính toán
             if (showCustomBorder) {
                 canvas.drawRoundRect(
                     realBounds.left.toFloat(),
@@ -526,7 +549,10 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             // Đảm bảo letter spacing được áp dụng
             textPaint.letterSpacing = letterSpacing
 
-            // Lấy textRect
+            // Cập nhật bounds để bám sát text sau khi thay đổi letter spacing/line height
+            updateBoundsToFitText()
+
+            // Lấy bounds đã cập nhật
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
             val textRect = textRectField.get(this) as android.graphics.Rect
@@ -540,33 +566,26 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             lineSpacingExtraField.isAccessible = true
             val lineSpacingExtra = lineSpacingExtraField.get(this) as Float
 
-            // THAY ĐỔI QUAN TRỌNG: Tính toán chiều rộng cần thiết cho text với spacing mới
-            val baseTextWidth = textPaint.measureText(text)
+            // Tính toán chiều rộng cần thiết cho layout (với padding giảm xuống)
+            val layoutWidth = textRect.width() - 40 // Giảm padding để tránh xuống dòng không cần thiết
 
-            // Điều chỉnh chiều rộng layout theo letter spacing
-            // Nếu letter spacing > 0, cần mở rộng chiều rộng để tránh xuống dòng
-            val expandRatio = if (letterSpacing > 0) (1 + letterSpacing * 2) else 1f
-            val neededWidth = ceil((baseTextWidth * expandRatio).toDouble()).toInt().coerceAtLeast(textRect.width() - 80)
-
-            Log.d("FlexibleTextSticker", "Base width: $baseTextWidth, Expanded width: $neededWidth")
-
-            // Tạo StaticLayout với chiều rộng đủ lớn để chứa text có spacing mới
+            // Tạo StaticLayout với các tham số đã cập nhật
             val staticLayout = StaticLayout.Builder
-                .obtain(text, 0, text.length, textPaint, neededWidth)
+                .obtain(text, 0, text.length, textPaint, layoutWidth)
                 .setAlignment(currentAlignment)
-                .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier) // Giữ nguyên line height
+                .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier)
                 .setIncludePad(true)
                 .build()
-
-            // Cập nhật alignment trong TextSticker
-            val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
-            alignmentField.isAccessible = true
-            alignmentField.set(this, currentAlignment)
 
             // Cập nhật StaticLayout
             val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
             staticLayoutField.isAccessible = true
             staticLayoutField.set(this, staticLayout)
+
+            // Cập nhật alignment
+            val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
+            alignmentField.isAccessible = true
+            alignmentField.set(this, currentAlignment)
 
             Log.d("FlexibleTextSticker", "Layout refreshed successfully - Layout width: ${staticLayout.width}, Height: ${staticLayout.height}")
         } catch (e: Exception) {
@@ -616,7 +635,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
             // SỬA: Đảm bảo sử dụng giá trị lineSpacingMultiplier mới
             val staticLayout = StaticLayout.Builder
-                .obtain(text, 0, text.length, textPaint, textRect.width() - 80)
+                .obtain(text, 0, text.length, textPaint, textRect.width() - 40)
                 .setAlignment(alignment)
                 .setLineSpacing(lineSpacingExtra, lineSpacingMultiplier) // Quan trọng!
                 .setIncludePad(true)
@@ -626,6 +645,13 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
             staticLayoutField.isAccessible = true
             staticLayoutField.set(this, staticLayout)
+
+            // Cập nhật layout
+            refreshLayout()
+
+            // Đảm bảo cập nhật cả bounds để border bám sát text mới
+            updateBoundsToFitText()
+
 
             Log.d("FlexibleTextSticker", "Static layout updated with new line height")
 
