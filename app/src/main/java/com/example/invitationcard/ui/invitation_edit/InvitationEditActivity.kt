@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.Layout
 import android.util.Log
 import android.view.LayoutInflater
@@ -29,6 +31,7 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSizeCont
 import com.example.invitationcard.ui.invitation_edit.edit_text.alignment.TextAlignmentController
 import com.example.invitationcard.ui.invitation_edit.edit_text.color.TextColorController
 import com.example.invitationcard.ui.invitation_edit.edit_text.TextEditorActivity
+import com.example.invitationcard.ui.invitation_edit.edit_text.lineheight.LineHeightController
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
 import com.xiaopo.flying.sticker.Sticker
@@ -56,6 +59,9 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private lateinit var textAlignmentController: TextAlignmentController
     private var isAlignmentControlVisible = false
+
+    private lateinit var lineHeightController: LineHeightController
+    private var isLineHeightControlVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,6 +92,7 @@ class InvitationEditActivity : AppCompatActivity() {
         setupFontSizeController()
         setupTextColorController()
         setupTextAlignmentController()
+        setupLineHeightController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
     }
@@ -287,6 +294,13 @@ class InvitationEditActivity : AppCompatActivity() {
                 toggleAlignmentControl(currentSticker)
             }
         }
+
+        findViewById<ImageButton>(R.id.btn_editTextHeight)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                toggleLineHeightControl(currentSticker)
+            }
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -406,6 +420,10 @@ class InvitationEditActivity : AppCompatActivity() {
         }
         if (isAlignmentControlVisible) { // Thêm điều kiện này
             hideAlignmentControl()
+        }
+
+        if (isLineHeightControlVisible) {
+            hideLineHeightControl()
         }
     }
 
@@ -729,5 +747,102 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupLineHeightController() {
+        val lineHeightControlView = findViewById<View>(R.id.line_height_control)
+
+        lineHeightControlView.setOnTouchListener { _, _ ->
+            // Chặn sự kiện chạm để không truyền đến các view bên dưới
+            true
+        }
+
+        lineHeightController = LineHeightController(lineHeightControlView) { newLineHeight ->
+            applyLineHeightToCurrentSticker(newLineHeight)
+        }
+    }
+
+    private fun toggleLineHeightControl(textSticker: TextSticker) {
+        if (isLineHeightControlVisible) {
+            hideLineHeightControl()
+        } else {
+            if (textSticker is FlexibleTextSticker) {
+                // Log kiểm tra
+                textSticker.checkLineHeightApplied()
+            }
+            showLineHeightControl(textSticker)
+        }
+    }
+
+    private fun showLineHeightControl(textSticker: TextSticker) {
+        // Lấy line height hiện tại
+        val currentLineHeight = getCurrentLineHeight(textSticker)
+        lineHeightController.setLineHeightWithoutCallback(currentLineHeight)
+        lineHeightController.show()
+        isLineHeightControlVisible = true
+
+        // Cập nhật trạng thái nút Line Height
+        updateLineHeightButtonState(true)
+
+        // Ẩn các control khác
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
+        if (isAlignmentControlVisible) {
+            hideAlignmentControl()
+        }
+    }
+
+    private fun hideLineHeightControl() {
+        lineHeightController.hide()
+        isLineHeightControlVisible = false
+        updateLineHeightButtonState(false)
+    }
+
+    private fun updateLineHeightButtonState(isActive: Boolean) {
+        val btnLineHeight = findViewById<ImageButton>(R.id.btn_editTextHeight)
+        if (isActive) {
+            btnLineHeight?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnLineHeight?.clearColorFilter()
+        }
+    }
+
+    private fun getCurrentLineHeight(textSticker: TextSticker): Int {
+        return if (textSticker is FlexibleTextSticker) {
+            textSticker.getLineHeightPercent()
+        } else {
+            120 // Giá trị mặc định
+        }
+    }
+
+    private fun applyLineHeightToCurrentSticker(lineHeight: Int) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                Log.d("InvitationEditActivity", "Applying line height: $lineHeight%")
+
+                // Đặt line height mới
+                currentSticker.setLineHeightPercent(lineHeight)
+
+                // Force redraw sticker
+                stickerView.invalidate()
+
+                // Thêm delay redraw để đảm bảo UI được cập nhật
+                Handler(Looper.getMainLooper()).postDelayed({
+                    stickerView.invalidate()
+                    Log.d("InvitationEditActivity", "Redraw after delay")
+                }, 50)
+
+                Log.d("InvitationEditActivity", "Line height applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying line height: ${e.message}", e)
+            }
+        } else {
+            Log.e("InvitationEditActivity", "Current sticker is not FlexibleTextSticker")
+        }
+    }
 
 }

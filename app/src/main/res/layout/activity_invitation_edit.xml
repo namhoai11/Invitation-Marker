@@ -253,7 +253,7 @@
                         android:padding="12dp"
                         android:src="@drawable/ic_edit_height" />
                     <ImageButton
-                        android:id="@+id/btn_eidtTextWidth"
+                        android:id="@+id/btn_editTextWidth"
                         android:layout_width="56dp"
                         android:layout_height="match_parent"
                         android:background="?attr/selectableItemBackground"
@@ -308,6 +308,14 @@
             <include
                 android:id="@+id/text_alignment_control"
                 layout="@layout/text_alignment_control"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
+            <!-- Line Height Control -->
+            <include
+                android:id="@+id/line_height_control"
+                layout="@layout/line_height_control"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:visibility="gone" />
