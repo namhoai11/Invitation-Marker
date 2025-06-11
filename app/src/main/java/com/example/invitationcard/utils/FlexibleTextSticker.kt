@@ -25,7 +25,6 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     // Thêm biến này để kiểm soát hiển thị border
     private var showCustomBorder: Boolean = false
 
-    // Thêm các thuộc tính cho border
     private val borderPaint = Paint().apply {
         color = Color.GREEN
         alpha = 255
@@ -53,10 +52,12 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
     fun getLineHeightPercent(): Int = lineHeightPercent
 
-    private var letterSpacing: Float = 0f  // Giá trị mặc định = 0
-
-    // Thêm getter
+    private var letterSpacing: Float = 0f
     fun getLetterSpacing(): Float = letterSpacing
+
+
+    private var isUppercase: Boolean = false
+    fun isUppercase(): Boolean = isUppercase
 
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
@@ -157,7 +158,12 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     fun getTextSizeSp(): Int = customTextSizeSp
 
     override fun setText(text: String?): TextSticker {
-        val result = super.setText(text)
+        originalText = text ?: ""
+
+        // Áp dụng chữ hoa/thường nếu cần
+        val processedText = if (isUppercase) originalText.uppercase() else originalText.lowercase()
+
+        val result = super.setText(processedText)
         updateRealBoundsToText()
         return result
     }
@@ -716,4 +722,63 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             Log.e("FlexibleTextSticker", "Error setting letter spacing: ${e.message}", e)
         }
     }
+
+    fun toggleUppercase(): Boolean {
+        isUppercase = !isUppercase
+        updateTextCase()
+        return isUppercase
+    }
+
+    // Thêm phương thức để đặt trạng thái uppercase
+    fun setUppercase(uppercase: Boolean): Boolean {
+        if (isUppercase != uppercase) {
+            isUppercase = uppercase
+            updateTextCase()
+        }
+        return isUppercase
+    }
+
+    // Phương thức cập nhật text theo trạng thái chữ hoa/thường
+    private fun updateTextCase() {
+        try {
+            val currentText = getText()?.toString() ?: ""
+            if (currentText.isEmpty()) return
+
+            // Lấy text field từ TextSticker
+            val textField = TextSticker::class.java.getDeclaredField("text")
+            textField.isAccessible = true
+
+            // Chuyển đổi text dựa trên trạng thái uppercase
+            val newText = if (isUppercase) {
+                currentText.uppercase()
+            } else {
+                currentText.lowercase()
+            }
+
+            // Cập nhật text field trong TextSticker
+            textField.set(this, newText)
+
+            // Cập nhật layout
+            refreshLayout()
+
+            Log.d("FlexibleTextSticker", "Text case updated to ${if (isUppercase) "UPPERCASE" else "lowercase"}")
+        } catch (e: Exception) {
+            Log.e("FlexibleTextSticker", "Error updating text case: ${e.message}", e)
+        }
+    }
+    // Ghi đè phương thức setText để lưu text gốc
+    private var originalText: String = ""
+
+//    override fun setText(text: String?): TextSticker {
+//        originalText = text ?: ""
+//
+//        // Áp dụng chữ hoa/thường nếu cần
+//        val processedText = if (isUppercase) originalText.uppercase() else originalText.lowercase()
+//
+//        val result = super.setText(processedText)
+//        updateRealBoundsToText()
+//        return result
+//    }
+
+
 }

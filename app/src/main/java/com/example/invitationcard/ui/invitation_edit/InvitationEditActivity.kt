@@ -177,6 +177,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
             }
 
+            // Trong phương thức onStickerClicked trong StickerView.OnStickerOperationListener
             override fun onStickerClicked(sticker: Sticker) {
                 try {
                     hideAllStickerBorders()
@@ -185,9 +186,15 @@ class InvitationEditActivity : AppCompatActivity() {
                         showTextEditTools()
                         updateSizeControllerFromSticker(sticker)
 
-                        // Thêm: Cập nhật trạng thái các nút theo sticker được chọn
+                        // Cập nhật trạng thái các nút theo sticker được chọn
                         updateBoldButtonState(sticker.isBold())
                         updateItalicButtonState(sticker.isItalic())
+                        updateUppercaseButtonState(sticker.isUppercase())  // Thêm dòng này
+
+                        // Cập nhật alignment nếu đang hiển thị
+                        if (isAlignmentControlVisible) {
+                            textAlignmentController.setAlignmentWithoutCallback(sticker.getTextAlignment())
+                        }
                     }
 
                     stickerView.invalidate()
@@ -310,6 +317,18 @@ class InvitationEditActivity : AppCompatActivity() {
             val currentSticker = getCurrentSticker()
             if (currentSticker is FlexibleTextSticker) {
                 toggleLetterSpacingControl(currentSticker)
+            }
+        }
+
+        findViewById<TextView>(R.id.btn_Uppercase)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                // Toggle trạng thái uppercase
+                val isUppercase = currentSticker.toggleUppercase()
+                // Cập nhật giao diện nút
+                updateUppercaseButtonState(isUppercase)
+                // Redraw sticker
+                stickerView.invalidate()
             }
         }
     }
@@ -951,6 +970,18 @@ class InvitationEditActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying letter spacing: ${e.message}", e)
             }
+        }
+    }
+
+    // Thêm phương thức cập nhật trạng thái nút Uppercase
+    private fun updateUppercaseButtonState(isActive: Boolean) {
+        val btnUppercase = findViewById<TextView>(R.id.btn_Uppercase)
+        if (isActive) {
+            btnUppercase?.setTextColor(resources.getColor(R.color.green, null))
+            btnUppercase?.typeface = Typeface.DEFAULT_BOLD
+        } else {
+            btnUppercase?.setTextColor(resources.getColor(android.R.color.black, null))
+            btnUppercase?.typeface = Typeface.DEFAULT
         }
     }
 }
