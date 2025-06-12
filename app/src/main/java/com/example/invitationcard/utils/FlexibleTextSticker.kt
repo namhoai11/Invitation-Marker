@@ -5,6 +5,8 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -14,10 +16,9 @@ import android.util.TypedValue
 import com.xiaopo.flying.sticker.TextSticker
 import kotlin.math.ceil
 
-class FlexibleTextSticker(context: Context) : TextSticker(context) {
+class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
 
     private var customTextSizeSp: Int = 18  // Bắt đầu với kích thước nhỏ hơn
-    private val context: Context = context
 
     // Thêm biến để theo dõi trạng thái khởi tạo
     private var isInitialSetup = true
@@ -59,6 +60,21 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     private var isUppercase: Boolean = false
     fun isUppercase(): Boolean = isUppercase
 
+    private var curveAngle: Float = 0f // Giá trị mặc định = 0 (không cong)
+    fun getCurveAngle(): Float = curveAngle
+
+    fun setCurveAngle(angle: Float) {
+        curveAngle = angle
+        Log.d("FlexibleTextSticker", "Curve angle set to: $angle°")
+
+        // Cập nhật chiều cao text phù hợp với độ cong
+        val text = getText() ?: ""
+        if (text.isNotEmpty() && !text.contains("\n") && Math.abs(angle) > 5f) {
+            // Text có độ cong đáng kể: tái tạo layout
+            refreshLayout()
+        }
+    }
+
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
         try {
@@ -79,53 +95,53 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         currentAlignment = Layout.Alignment.ALIGN_CENTER
     }
 
-    // Thêm phương thức để cập nhật border theo kích thước text
-    private fun updateBorderSize() {
-        try {
-            val text = text ?: ""
-            if (text.isEmpty()) return
-
-            // Lấy TextPaint
-            val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
-            textPaintField.isAccessible = true
-            val textPaint = textPaintField.get(this) as TextPaint
-
-            // Tính toán kích thước border dựa trên kích thước text
-            val scale = currentScale
-            val scaledPadding = borderPadding * scale
-            val scaledCornerRadius = borderCornerRadius * scale
-            borderPaint.strokeWidth = 8f * scale
-
-            // Cập nhật borderPaint
-            borderPaint.alpha = (255 * (1 - (scale - 1) * 0.3)).toInt().coerceIn(128, 255)
-
-            // Cập nhật realBounds và textRect với padding mới
-            val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
-            realBoundsField.isAccessible = true
-            val realBounds = realBoundsField.get(this) as android.graphics.Rect
-
-            val textRectField = TextSticker::class.java.getDeclaredField("textRect")
-            textRectField.isAccessible = true
-            val textRect = textRectField.get(this) as android.graphics.Rect
-
-            // Tính toán kích thước mới cho border
-            val borderWidth = realBounds.width() + (scaledPadding * 2)
-            val borderHeight = realBounds.height() + (scaledPadding * 2)
-
-            // Cập nhật bounds
-            realBounds.set(0, 0, borderWidth.toInt(), borderHeight.toInt())
-            textRect.set(0, 0, borderWidth.toInt(), borderHeight.toInt())
-
-            // Cập nhật drawable nếu có
-            val drawableField = TextSticker::class.java.getDeclaredField("drawable")
-            drawableField.isAccessible = true
-            val drawable = drawableField.get(this) as? android.graphics.drawable.Drawable
-            drawable?.setBounds(0, 0, borderWidth.toInt(), borderHeight.toInt())
-
-        } catch (e: Exception) {
-            Log.e("FlexibleTextSticker", "Error updating border size", e)
-        }
-    }
+//    // Thêm phương thức để cập nhật border theo kích thước text
+//    private fun updateBorderSize() {
+//        try {
+//            val text = text ?: ""
+//            if (text.isEmpty()) return
+//
+//            // Lấy TextPaint
+//            val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
+//            textPaintField.isAccessible = true
+//            val textPaint = textPaintField.get(this) as TextPaint
+//
+//            // Tính toán kích thước border dựa trên kích thước text
+//            val scale = currentScale
+//            val scaledPadding = borderPadding * scale
+//            val scaledCornerRadius = borderCornerRadius * scale
+//            borderPaint.strokeWidth = 8f * scale
+//
+//            // Cập nhật borderPaint
+//            borderPaint.alpha = (255 * (1 - (scale - 1) * 0.3)).toInt().coerceIn(128, 255)
+//
+//            // Cập nhật realBounds và textRect với padding mới
+//            val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
+//            realBoundsField.isAccessible = true
+//            val realBounds = realBoundsField.get(this) as android.graphics.Rect
+//
+//            val textRectField = TextSticker::class.java.getDeclaredField("textRect")
+//            textRectField.isAccessible = true
+//            val textRect = textRectField.get(this) as android.graphics.Rect
+//
+//            // Tính toán kích thước mới cho border
+//            val borderWidth = realBounds.width() + (scaledPadding * 2)
+//            val borderHeight = realBounds.height() + (scaledPadding * 2)
+//
+//            // Cập nhật bounds
+//            realBounds.set(0, 0, borderWidth.toInt(), borderHeight.toInt())
+//            textRect.set(0, 0, borderWidth.toInt(), borderHeight.toInt())
+//
+//            // Cập nhật drawable nếu có
+//            val drawableField = TextSticker::class.java.getDeclaredField("drawable")
+//            drawableField.isAccessible = true
+//            val drawable = drawableField.get(this) as? android.graphics.drawable.Drawable
+//            drawable?.setBounds(0, 0, borderWidth.toInt(), borderHeight.toInt())
+//
+//        } catch (e: Exception) {
+//            Log.e("FlexibleTextSticker", "Error updating border size", e)
+//        }
+//    }
 
     // Cập nhật phương thức setTextSizeSp để cập nhật border
     fun setTextSizeSp(sizeInSp: Int) {
@@ -218,7 +234,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             // Cập nhật bounds
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
-            val realBounds = realBoundsField.get(this) as android.graphics.Rect
+            val realBounds = realBoundsField.get(this) as Rect
 
             if (isInitialSetup) {
                 // Lần đầu setup: đặt bounds với điểm neo ở trung tâm
@@ -241,7 +257,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             // Cập nhật textRect
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
-            val textRect = textRectField.get(this) as android.graphics.Rect
+            val textRect = textRectField.get(this) as Rect
             textRect.set(realBounds)
 
             // Cập nhật drawable
@@ -298,7 +314,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             // Lưu kích thước cũ
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
-            val realBounds = realBoundsField.get(this) as android.graphics.Rect
+            val realBounds = realBoundsField.get(this) as Rect
             val oldWidth = realBounds.width()
             val oldHeight = realBounds.height()
 
@@ -322,17 +338,13 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
-            val realBounds = realBoundsField.get(this) as android.graphics.Rect
+            val realBounds = realBoundsField.get(this) as Rect
 
-            val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
-            staticLayoutField.isAccessible = true
-            val staticLayout = staticLayoutField.get(this) as? StaticLayout
-            if (staticLayout == null) {
-                canvas.restore()
-                return
-            }
+            val textPaintField = TextSticker::class.java.getDeclaredField("textPaint")
+            textPaintField.isAccessible = true
+            val textPaint = textPaintField.get(this) as TextPaint
 
-            // Vẽ border bám sát theo bounds đã tính toán
+            // Vẽ border nếu cần
             if (showCustomBorder) {
                 canvas.drawRoundRect(
                     realBounds.left.toFloat(),
@@ -345,11 +357,33 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
                 )
             }
 
-            // Vẽ text căn giữa trong bounds
-            val offsetX = realBounds.left + (realBounds.width() - staticLayout.width) / 2f
-            val offsetY = realBounds.top + (realBounds.height() - staticLayout.height) / 2f
-            canvas.translate(offsetX, offsetY)
-            staticLayout.draw(canvas)
+            val text = getText() ?: ""
+            if (text.isNotEmpty()) {
+                if (text.contains("\n")) {
+                    // Chỉ sử dụng StaticLayout cho text nhiều dòng
+                    val staticLayoutField = TextSticker::class.java.getDeclaredField("staticLayout")
+                    staticLayoutField.isAccessible = true
+                    val staticLayout = staticLayoutField.get(this) as? StaticLayout
+
+                    if (staticLayout != null) {
+                        val offsetX = realBounds.left + (realBounds.width() - staticLayout.width) / 2f
+
+                        // Tính toán chính xác offsetY để text nằm chính giữa theo chiều dọc
+                        val textHeight = staticLayout.height
+                        val boundsHeight = realBounds.height()
+                        val offsetY = realBounds.top + (boundsHeight - textHeight) / 2f
+
+                        canvas.save()
+                        canvas.translate(offsetX, offsetY)
+                        staticLayout.draw(canvas)
+                        canvas.restore()
+                    }
+                } else {
+                    // *** QUAN TRỌNG: Luôn sử dụng một phương pháp duy nhất cho text một dòng ***
+                    // Không chuyển đổi giữa các phương pháp vẽ dựa trên góc cong
+                    drawCurvedText(canvas, text, textPaint, realBounds)
+                }
+            }
 
             canvas.restore()
         } catch (e: Exception) {
@@ -368,7 +402,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         // Lấy realBounds đã được cập nhật theo border
         val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
         realBoundsField.isAccessible = true
-        val realBounds = realBoundsField.get(this) as android.graphics.Rect
+        val realBounds = realBoundsField.get(this) as Rect
 
         // Kiểm tra điểm có nằm trong realBounds không
         return mapped[0] >= realBounds.left && mapped[0] <= realBounds.right &&
@@ -387,7 +421,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
         val oldCenter = FloatArray(2)
         val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
         realBoundsField.isAccessible = true
-        val realBounds = realBoundsField.get(this) as android.graphics.Rect
+        val realBounds = realBoundsField.get(this) as Rect
         oldCenter[0] = realBounds.exactCenterX()
         oldCenter[1] = realBounds.exactCenterY()
         this.matrix.mapPoints(oldCenter)
@@ -561,7 +595,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
             // Lấy bounds đã cập nhật
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
-            val textRect = textRectField.get(this) as android.graphics.Rect
+            val textRect = textRectField.get(this) as Rect
 
             // Lấy giá trị lineSpacing
             val lineSpacingMultiplierField = TextSticker::class.java.getDeclaredField("lineSpacingMultiplier")
@@ -633,7 +667,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
 
             val textRectField = TextSticker::class.java.getDeclaredField("textRect")
             textRectField.isAccessible = true
-            val textRect = textRectField.get(this) as android.graphics.Rect
+            val textRect = textRectField.get(this) as Rect
 
             val alignmentField = TextSticker::class.java.getDeclaredField("alignment")
             alignmentField.isAccessible = true
@@ -741,7 +775,7 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     // Phương thức cập nhật text theo trạng thái chữ hoa/thường
     private fun updateTextCase() {
         try {
-            val currentText = getText()?.toString() ?: ""
+            val currentText = text ?: ""
             if (currentText.isEmpty()) return
 
             // Lấy text field từ TextSticker
@@ -769,16 +803,89 @@ class FlexibleTextSticker(context: Context) : TextSticker(context) {
     // Ghi đè phương thức setText để lưu text gốc
     private var originalText: String = ""
 
-//    override fun setText(text: String?): TextSticker {
-//        originalText = text ?: ""
-//
-//        // Áp dụng chữ hoa/thường nếu cần
-//        val processedText = if (isUppercase) originalText.uppercase() else originalText.lowercase()
-//
-//        val result = super.setText(processedText)
-//        updateRealBoundsToText()
-//        return result
-//    }
 
+    // Phương thức mới để vẽ text cong
+    private fun drawCurvedText(canvas: Canvas, text: String, paint: TextPaint, bounds: Rect) {
+        try {
+            // Lưu trạng thái canvas gốc
+            canvas.save()
 
+            // Lấy kích thước bounds
+            val width = bounds.width().toFloat()
+            val height = bounds.height().toFloat()
+
+            // Tọa độ trung tâm bounds
+            val centerX = bounds.exactCenterX()
+            val centerY = bounds.exactCenterY()
+
+            // Tạo đường cong với Path
+            val path = Path()
+
+            // *** QUAN TRỌNG: Cố định chiều rộng path = chiều rộng bounds ***
+            // Không mở rộng thêm để tránh lệch
+            val pathWidth = width
+
+            // Điểm bắt đầu và kết thúc của path luôn cố định
+            val startX = centerX - pathWidth / 2
+            val endX = centerX + pathWidth / 2
+
+            // *** QUAN TRỌNG: Phương pháp vẽ giống nhau cho mọi góc ***
+            val absAngle = Math.abs(curveAngle)
+
+            if (absAngle < 0.5f) {
+                // Với góc rất nhỏ: vẽ đường thẳng
+                path.moveTo(startX, centerY)
+                path.lineTo(endX, centerY)
+            } else {
+                // Với góc lớn hơn: vẽ đường cong
+                // Chuẩn hóa góc cong để có đường cong mượt mà
+                val normAngle = absAngle / 180f
+                val smoothCurve = Math.pow(normAngle.toDouble(), 1.5).toFloat()
+
+                // Giới hạn độ cong để tránh biến dạng
+                val maxBend = height * 0.6f
+                val bendAmount = maxBend * smoothCurve * (if (curveAngle < 0) -1 else 1)
+
+                // Tạo đường cong
+                path.moveTo(startX, centerY)
+                path.quadTo(
+                    centerX,               // Điểm điều khiển x
+                    centerY + bendAmount,  // Điểm điều khiển y
+                    endX,                  // Điểm cuối x
+                    centerY                // Điểm cuối y
+                )
+            }
+
+            // Thiết lập text căn giữa
+            paint.textAlign = Paint.Align.CENTER
+
+            //yOffset de text nam chinh giua duong path
+            // Sử dụng fontMetrics để tính toán offset chính xác
+            val fontMetrics = paint.fontMetrics
+            val textHeight = fontMetrics.descent - fontMetrics.ascent
+
+            // Kết hợp baseline offset với offset dựa trên góc cong
+            val baselineOffset = -fontMetrics.ascent / 2
+
+            // Offset dựa trên góc cong, mượt mà khi góc về 0
+            val curveOffsetFactor = if (absAngle < 0.5f) {
+                0f
+            } else {
+                val factor = absAngle / 180f
+                if (curveAngle < 0) -0.2f * factor else 0.2f * factor
+            }
+
+            // Kết hợp các offset
+            val yOffset = baselineOffset + (height * curveOffsetFactor)
+
+            // Vẽ text theo đường path
+            canvas.drawTextOnPath(text, path, 0f, yOffset, paint)
+
+            // Khôi phục trạng thái canvas
+            canvas.restore()
+
+        } catch (e: Exception) {
+            Log.e("FlexibleTextSticker", "Error in drawCurvedText", e)
+        }
+    }
 }

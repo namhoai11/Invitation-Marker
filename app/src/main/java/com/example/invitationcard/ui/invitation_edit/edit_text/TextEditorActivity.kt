@@ -60,7 +60,7 @@ class TextEditorActivity : AppCompatActivity() {
         }
 
         val text = intent.getStringExtra(EXTRA_TEXT) ?: ""
-        if (text == "Enter text...") {
+        if (text == "enter text...") {
             textEditor.hint = text
         } else {
             textEditor.setText(text)

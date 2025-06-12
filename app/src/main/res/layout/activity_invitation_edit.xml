@@ -328,6 +328,14 @@
                 android:layout_height="wrap_content"
                 android:visibility="gone" />
 
+            <!-- Curved Text Control -->
+            <include
+                android:id="@+id/curved_text_control"
+                layout="@layout/curved_text_control"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone" />
+
             <!-- Công cụ chỉnh sửa hình ảnh -->
             <HorizontalScrollView
                 android:id="@+id/image_tools_container"

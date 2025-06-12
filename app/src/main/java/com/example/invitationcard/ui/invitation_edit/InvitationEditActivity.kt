@@ -31,6 +31,7 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSizeCont
 import com.example.invitationcard.ui.invitation_edit.edit_text.alignment.TextAlignmentController
 import com.example.invitationcard.ui.invitation_edit.edit_text.color.TextColorController
 import com.example.invitationcard.ui.invitation_edit.edit_text.TextEditorActivity
+import com.example.invitationcard.ui.invitation_edit.edit_text.curved.CurvedTextController
 import com.example.invitationcard.ui.invitation_edit.edit_text.lineheight.LineHeightController
 import com.example.invitationcard.ui.invitation_edit.edit_text.linewidth.LetterSpacingController
 import com.example.invitationcard.utils.FlexibleTextSticker
@@ -67,6 +68,9 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var letterSpacingController: LetterSpacingController
     private var isLetterSpacingControlVisible = false
 
+    private lateinit var curvedTextController: CurvedTextController
+    private var isCurvedTextControlVisible = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -98,6 +102,7 @@ class InvitationEditActivity : AppCompatActivity() {
         setupTextAlignmentController()
         setupLineHeightController()
         setupLetterSpacingController()
+        setupCurvedTextController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
     }
@@ -189,7 +194,12 @@ class InvitationEditActivity : AppCompatActivity() {
                         // Cập nhật trạng thái các nút theo sticker được chọn
                         updateBoldButtonState(sticker.isBold())
                         updateItalicButtonState(sticker.isItalic())
-                        updateUppercaseButtonState(sticker.isUppercase())  // Thêm dòng này
+                        updateUppercaseButtonState(sticker.isUppercase())
+
+                        // Cập nhật curved text nếu đang hiển thị
+                        if (isCurvedTextControlVisible) {
+                            curvedTextController.setCurveAngleWithoutCallback(sticker.getCurveAngle())
+                        }
 
                         // Cập nhật alignment nếu đang hiển thị
                         if (isAlignmentControlVisible) {
@@ -331,6 +341,12 @@ class InvitationEditActivity : AppCompatActivity() {
                 stickerView.invalidate()
             }
         }
+        findViewById<ImageButton>(R.id.btn_editCurvedText)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                toggleCurvedTextControl(currentSticker)
+            }
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -363,11 +379,11 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun addText() {
-        createTextSticker("Enter text...")
+        createTextSticker("enter text...")
     }
 
     private fun showTextEditor(textSticker: TextSticker) {
-        val intent = Intent(this, TextEditorActivity::class.java).apply {
+        val intent = Intent(this,  TextEditorActivity::class.java).apply {
             putExtra(TextEditorActivity.EXTRA_TEXT, textSticker.text)
         }
         startActivityForResult(intent, REQUEST_EDIT_TEXT)
@@ -458,6 +474,9 @@ class InvitationEditActivity : AppCompatActivity() {
 
         if (isLetterSpacingControlVisible) {
             hideLetterSpacingControl()
+        }
+        if (isCurvedTextControlVisible) {
+            hideCurvedTextControl()
         }
     }
 
@@ -982,6 +1001,93 @@ class InvitationEditActivity : AppCompatActivity() {
         } else {
             btnUppercase?.setTextColor(resources.getColor(android.R.color.black, null))
             btnUppercase?.typeface = Typeface.DEFAULT
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupCurvedTextController() {
+        val curvedTextControlView = findViewById<View>(R.id.curved_text_control)
+
+        curvedTextControlView.setOnTouchListener { _, _ ->
+            // Chặn sự kiện chạm để không truyền đến các view bên dưới
+            true
+        }
+
+        curvedTextController = CurvedTextController(curvedTextControlView) { newAngle ->
+            applyCurveAngleToCurrentSticker(newAngle)
+        }
+    }
+
+    private fun toggleCurvedTextControl(textSticker: TextSticker) {
+        if (isCurvedTextControlVisible) {
+            hideCurvedTextControl()
+        } else {
+            showCurvedTextControl(textSticker)
+        }
+    }
+
+    private fun showCurvedTextControl(textSticker: TextSticker) {
+        // Lấy góc cong hiện tại
+        val currentAngle = getCurrentCurveAngle(textSticker)
+        curvedTextController.setCurveAngleWithoutCallback(currentAngle)
+        curvedTextController.show()
+        isCurvedTextControlVisible = true
+
+        // Cập nhật trạng thái nút
+        updateCurvedTextButtonState(true)
+
+        // Ẩn các control khác
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
+        if (isAlignmentControlVisible) {
+            hideAlignmentControl()
+        }
+        if (isLetterSpacingControlVisible) {
+            hideLetterSpacingControl()
+        }
+        if (isLineHeightControlVisible) {
+            hideLineHeightControl()
+        }
+    }
+
+    private fun hideCurvedTextControl() {
+        curvedTextController.hide()
+        isCurvedTextControlVisible = false
+        updateCurvedTextButtonState(false)
+    }
+
+    private fun updateCurvedTextButtonState(isActive: Boolean) {
+        val btnCurvedText = findViewById<ImageButton>(R.id.btn_editCurvedText)
+        if (isActive) {
+            btnCurvedText?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnCurvedText?.clearColorFilter()
+        }
+    }
+
+    private fun getCurrentCurveAngle(textSticker: TextSticker): Float {
+        return if (textSticker is FlexibleTextSticker) {
+            textSticker.getCurveAngle()
+        } else {
+            0f // Giá trị mặc định
+        }
+    }
+
+    private fun applyCurveAngleToCurrentSticker(angle: Float) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker is FlexibleTextSticker) {
+            try {
+                Log.d("InvitationEditActivity", "Applying curve angle: $angle°")
+                currentSticker.setCurveAngle(angle)
+                stickerView.invalidate()
+                Log.d("InvitationEditActivity", "Curve angle applied successfully")
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error applying curve angle: ${e.message}", e)
+            }
         }
     }
 }
