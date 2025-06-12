@@ -7,6 +7,7 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
@@ -14,6 +15,8 @@ import android.text.TextPaint
 import android.util.Log
 import android.util.TypedValue
 import com.xiaopo.flying.sticker.TextSticker
+//import kotlinx.coroutines.InternalCoroutinesApi
+//import kotlinx.coroutines.NonDisposableHandle.parent
 import kotlin.math.ceil
 
 class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
@@ -63,17 +66,17 @@ class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
     private var curveAngle: Float = 0f // Giá trị mặc định = 0 (không cong)
     fun getCurveAngle(): Float = curveAngle
 
-    fun setCurveAngle(angle: Float) {
-        curveAngle = angle
-        Log.d("FlexibleTextSticker", "Curve angle set to: $angle°")
-
-        // Cập nhật chiều cao text phù hợp với độ cong
-        val text = getText() ?: ""
-        if (text.isNotEmpty() && !text.contains("\n") && Math.abs(angle) > 5f) {
-            // Text có độ cong đáng kể: tái tạo layout
-            refreshLayout()
-        }
-    }
+//    fun setCurveAngle(angle: Float) {
+//        curveAngle = angle
+//        Log.d("FlexibleTextSticker", "Curve angle set to: $angle°")
+//
+//        // Cập nhật chiều cao text phù hợp với độ cong
+//        val text = getText() ?: ""
+//        if (text.isNotEmpty() && !text.contains("\n") && Math.abs(angle) > 5f) {
+//            // Text có độ cong đáng kể: tái tạo layout
+//            refreshLayout()
+//        }
+//    }
 
     init {
         // Ngay từ đầu, hãy tắt cơ chế tự động thay đổi kích thước của TextSticker
@@ -805,87 +808,226 @@ class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
 
 
     // Phương thức mới để vẽ text cong
+// Thay thế phương thức drawCurvedText hiện tại
     private fun drawCurvedText(canvas: Canvas, text: String, paint: TextPaint, bounds: Rect) {
+        val centerX = bounds.exactCenterX()
+        val centerY = bounds.exactCenterY()
+        val absAngle = Math.abs(curveAngle)
+
         try {
-            // Lưu trạng thái canvas gốc
             canvas.save()
 
-            // Lấy kích thước bounds
-            val width = bounds.width().toFloat()
-            val height = bounds.height().toFloat()
+            if (absAngle < 3f) {
+                // *** STRAIGHT TEXT - Canvas thuần ***
+                paint.textAlign = Paint.Align.CENTER
+                val yOffset = centerY - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2f
+                canvas.drawText(text, centerX, yOffset, paint)
 
-            // Tọa độ trung tâm bounds
-            val centerX = bounds.exactCenterX()
-            val centerY = bounds.exactCenterY()
-
-            // Tạo đường cong với Path
-            val path = Path()
-
-            // *** QUAN TRỌNG: Cố định chiều rộng path = chiều rộng bounds ***
-            // Không mở rộng thêm để tránh lệch
-            val pathWidth = width
-
-            // Điểm bắt đầu và kết thúc của path luôn cố định
-            val startX = centerX - pathWidth / 2
-            val endX = centerX + pathWidth / 2
-
-            // *** QUAN TRỌNG: Phương pháp vẽ giống nhau cho mọi góc ***
-            val absAngle = Math.abs(curveAngle)
-
-            if (absAngle < 0.5f) {
-                // Với góc rất nhỏ: vẽ đường thẳng
-                path.moveTo(startX, centerY)
-                path.lineTo(endX, centerY)
             } else {
-                // Với góc lớn hơn: vẽ đường cong
-                // Chuẩn hóa góc cong để có đường cong mượt mà
-                val normAngle = absAngle / 180f
-                val smoothCurve = Math.pow(normAngle.toDouble(), 1.5).toFloat()
-
-                // Giới hạn độ cong để tránh biến dạng
-                val maxBend = height * 0.6f
-                val bendAmount = maxBend * smoothCurve * (if (curveAngle < 0) -1 else 1)
-
-                // Tạo đường cong
-                path.moveTo(startX, centerY)
-                path.quadTo(
-                    centerX,               // Điểm điều khiển x
-                    centerY + bendAmount,  // Điểm điều khiển y
-                    endX,                  // Điểm cuối x
-                    centerY                // Điểm cuối y
-                )
+                // *** CURVED TEXT - Canvas với Path control hoàn toàn ***
+                drawCurvedTextCanvas(canvas, text, paint, bounds)
             }
 
-            // Thiết lập text căn giữa
-            paint.textAlign = Paint.Align.CENTER
-
-            //yOffset de text nam chinh giua duong path
-            // Sử dụng fontMetrics để tính toán offset chính xác
-            val fontMetrics = paint.fontMetrics
-            val textHeight = fontMetrics.descent - fontMetrics.ascent
-
-            // Kết hợp baseline offset với offset dựa trên góc cong
-            val baselineOffset = -fontMetrics.ascent / 2
-
-            // Offset dựa trên góc cong, mượt mà khi góc về 0
-            val curveOffsetFactor = if (absAngle < 0.5f) {
-                0f
-            } else {
-                val factor = absAngle / 180f
-                if (curveAngle < 0) -0.2f * factor else 0.2f * factor
-            }
-
-            // Kết hợp các offset
-            val yOffset = baselineOffset + (height * curveOffsetFactor)
-
-            // Vẽ text theo đường path
-            canvas.drawTextOnPath(text, path, 0f, yOffset, paint)
-
-            // Khôi phục trạng thái canvas
             canvas.restore()
 
         } catch (e: Exception) {
             Log.e("FlexibleTextSticker", "Error in drawCurvedText", e)
+            // Fallback: simple straight text
+            canvas.restore()
+            canvas.save()
+            paint.textAlign = Paint.Align.CENTER
+            canvas.drawText(text, centerX, centerY, paint)
+            canvas.restore()
+        }
+    }
+
+    private fun drawCurvedTextCanvas(canvas: Canvas, text: String, paint: TextPaint, bounds: Rect) {
+        val centerX = bounds.exactCenterX()
+        val centerY = bounds.exactCenterY()
+        val absAngle = Math.abs(curveAngle)
+
+        // *** CALCULATE TEXT DIMENSIONS ***
+        val textWidth = paint.measureText(text)
+        val boundsWidth = bounds.width().toFloat()
+        val boundsHeight = bounds.height().toFloat()
+
+        // *** PATH CREATION - 3 methods based on angle ***
+        val path = Path()
+
+        when {
+            absAngle <= 90f -> {
+                // *** METHOD 1: QUADRATIC CURVE (0° - 90°) ***
+                createQuadraticPath(path, centerX, centerY, textWidth, boundsWidth, boundsHeight)
+            }
+
+            absAngle <= 180f -> {
+                // *** METHOD 2: CUBIC CURVE (90° - 180°) ***
+                createCubicPath(path, centerX, centerY, textWidth, boundsWidth, boundsHeight)
+            }
+
+            else -> {
+                // *** METHOD 3: ARC PATH (180° - 360°) ***
+                createArcPath(path, centerX, centerY, textWidth, boundsWidth, boundsHeight)
+            }
+        }
+
+        // *** RENDER TEXT ON PATH ***
+        paint.textAlign = Paint.Align.CENTER
+
+        // Dynamic spacing and offset based on curve intensity
+        val spacing = calculateLetterSpacing(absAngle, paint.textSize)
+        val yOffset = calculateYOffset(absAngle, paint.fontMetrics)
+
+        canvas.drawTextOnPath(text, path, spacing, yOffset, paint)
+    }
+
+    private fun createQuadraticPath(path: Path, centerX: Float, centerY: Float,
+                                    textWidth: Float, boundsWidth: Float, boundsHeight: Float) {
+        // *** QUADRATIC BEZIER - Smooth curves for small angles ***
+        val pathWidth = Math.min(textWidth * 1.3f, boundsWidth * 0.85f)
+        val startX = centerX - pathWidth / 2f
+        val endX = centerX + pathWidth / 2f
+
+        // Bend calculation - proportional to angle
+        val absAngle = Math.abs(curveAngle)
+        val bendRatio = absAngle / 90f // 0.0 to 1.0
+        val maxBend = Math.min(boundsHeight * 0.4f, pathWidth * 0.6f)
+        val bendAmount = maxBend * bendRatio * (if (curveAngle < 0) -1f else 1f)
+
+        path.moveTo(startX, centerY)
+        path.quadTo(centerX, centerY + bendAmount, endX, centerY)
+    }
+
+    private fun createCubicPath(path: Path, centerX: Float, centerY: Float,
+                                textWidth: Float, boundsWidth: Float, boundsHeight: Float) {
+        // *** CUBIC BEZIER - More control for medium angles ***
+        val pathWidth = Math.min(textWidth * 1.4f, boundsWidth * 0.9f)
+        val startX = centerX - pathWidth / 2f
+        val endX = centerX + pathWidth / 2f
+
+        val absAngle = Math.abs(curveAngle)
+        val bendRatio = (absAngle - 90f) / 90f // 0.0 to 1.0 for 90-180°
+        val maxBend = Math.min(boundsHeight * 0.5f, pathWidth * 0.8f)
+        val bendAmount = maxBend * (0.5f + bendRatio * 0.5f) * (if (curveAngle < 0) -1f else 1f)
+
+        // Two control points for smoother S-curve
+        val control1X = centerX - pathWidth * 0.25f
+        val control2X = centerX + pathWidth * 0.25f
+        val controlY = centerY + bendAmount
+
+        path.moveTo(startX, centerY)
+        path.cubicTo(control1X, controlY, control2X, controlY, endX, centerY)
+    }
+
+    private fun createArcPath(path: Path, centerX: Float, centerY: Float,
+                              textWidth: Float, boundsWidth: Float, boundsHeight: Float) {
+        // *** ARC PATH - True circular arc for large angles ***
+        val absAngle = Math.abs(curveAngle)
+
+        // Calculate radius to fit text nicely in bounds
+        val radiusFactor = when {
+            absAngle >= 300f -> 0.6f
+            absAngle >= 240f -> 0.7f
+            else -> 0.8f
+        }
+
+        val radius = Math.min(boundsWidth, boundsHeight) * radiusFactor
+
+        // Center adjustment based on curve direction
+        val centerOffset = radius * 0.2f
+        val arcCenterX = centerX
+        val arcCenterY = centerY + (if (curveAngle < 0) -centerOffset else centerOffset)
+
+        // Create oval for arc
+        val ovalRect = RectF(
+            arcCenterX - radius,
+            arcCenterY - radius,
+            arcCenterX + radius,
+            arcCenterY + radius
+        )
+
+        // Sweep angle with gap to prevent text overlap
+        val gap = Math.max(20f, absAngle * 0.1f) // Dynamic gap
+        val sweepAngle = Math.min(absAngle - gap, 320f)
+
+        // Start angle to center the arc
+        val startAngle = if (curveAngle < 0) {
+            270f - sweepAngle / 2f
+        } else {
+            90f - sweepAngle / 2f
+        }
+
+        path.addArc(ovalRect, startAngle, sweepAngle)
+    }
+
+    private fun calculateLetterSpacing(absAngle: Float, textSize: Float): Float {
+        return when {
+            absAngle < 30f -> 0f
+            absAngle < 90f -> textSize * 0.01f * (absAngle / 90f)
+            absAngle < 180f -> textSize * 0.02f
+            else -> textSize * 0.03f * Math.min(absAngle / 270f, 1f)
+        }
+    }
+
+    private fun calculateYOffset(absAngle: Float, fontMetrics: Paint.FontMetrics): Float {
+        val baseOffset = -fontMetrics.ascent / 2f
+
+        return when {
+            absAngle < 45f -> baseOffset
+            absAngle < 90f -> baseOffset * 0.8f
+            absAngle < 180f -> baseOffset * 0.6f
+            else -> baseOffset * 0.4f
+        }
+    }
+
+    // *** INVALIDATION METHOD - Fixed version ***
+    fun invalidateSticker() {
+        try {
+            // Method 1: Thêm dummy transform để force redraw
+            val currentMatrix = Matrix(this.matrix)
+            currentMatrix.postTranslate(0.01f, 0.01f) // Tiny movement
+            currentMatrix.postTranslate(-0.01f, -0.01f) // Move back
+            this.setMatrix(currentMatrix) // Use setter method
+
+            Log.d("FlexibleTextSticker", "Sticker invalidated via matrix update")
+
+        } catch (e: Exception) {
+            Log.d("FlexibleTextSticker", "Could not invalidate sticker: ${e.message}")
+        }
+    }
+
+    // *** Alternative: Dùng reflection để access và invalidate ***
+    private fun forceRedraw() {
+        try {
+            // Method 2: Access drawable và invalidate
+            val drawableField = TextSticker::class.java.getDeclaredField("drawable")
+            drawableField.isAccessible = true
+            val drawable = drawableField.get(this) as? android.graphics.drawable.Drawable
+            drawable?.invalidateSelf()
+
+            // Method 3: Tạo lại StaticLayout để force update
+            if (getText()?.contains("\n") != true) {
+                // Chỉ cho single line text
+                refreshLayout()
+            }
+
+            Log.d("FlexibleTextSticker", "Force redraw completed")
+
+        } catch (e: Exception) {
+            Log.d("FlexibleTextSticker", "Could not force redraw: ${e.message}")
+        }
+    }
+
+    // *** SIMPLIFIED setCurveAngle ***
+    fun setCurveAngle(angle: Float) {
+        val oldAngle = curveAngle
+        curveAngle = angle
+
+        Log.d("FlexibleTextSticker", "Curve angle set to: $angle° (was: $oldAngle°)")
+
+        // Chỉ cần update một lần
+        if (oldAngle != angle) {
+            forceRedraw()
         }
     }
 }

@@ -15,15 +15,15 @@ class CurvedTextController(
     private val btnDecrease: ImageButton = controlView.findViewById(R.id.btn_decrease_curve)
     private val btnIncrease: ImageButton = controlView.findViewById(R.id.btn_increase_curve)
 
-    // Giá trị góc cong từ -180 đến 180 độ
-    private val minAngle = -180f
-    private val maxAngle = 180f
+    // *** THAY ĐỔI: Tăng phạm vi góc lên ±360 độ ***
+    private val minAngle = -360f
+    private val maxAngle = 360f
     private val defaultAngle = 0f
 
     init {
         // Seekbar có giá trị từ 0 đến 200, giá trị giữa (100) tương ứng với góc 0°
-        seekBar.max = 200
-        seekBar.progress = 100
+        seekBar.max = 720
+        seekBar.progress = 360
         updateValueDisplay(defaultAngle)
 
         setupListeners()
@@ -45,7 +45,7 @@ class CurvedTextController(
 
         btnDecrease.setOnClickListener {
             if (seekBar.progress > 0) {
-                seekBar.progress -= 10
+                seekBar.progress -= 1 // Tăng bước nhảy để điều chỉnh nhanh hơn
                 val angle = calculateAngle(seekBar.progress)
                 updateValueDisplay(angle)
                 onCurveAngleChanged(angle)
@@ -54,7 +54,7 @@ class CurvedTextController(
 
         btnIncrease.setOnClickListener {
             if (seekBar.progress < seekBar.max) {
-                seekBar.progress += 10
+                seekBar.progress += 1 // Tăng bước nhảy
                 val angle = calculateAngle(seekBar.progress)
                 updateValueDisplay(angle)
                 onCurveAngleChanged(angle)
@@ -63,14 +63,14 @@ class CurvedTextController(
     }
 
     private fun calculateAngle(progress: Int): Float {
-        // Chuyển đổi progress (0-200) thành góc (-180° đến 180°)
-        return minAngle + (progress / 200f) * (maxAngle - minAngle)
+        // *** THAY ĐỔI: Chuyển đổi progress (0-720) thành góc (-360° đến 360°) ***
+        return minAngle + (progress / 720f) * (maxAngle - minAngle)
     }
 
     private fun calculateProgress(angle: Float): Int {
         // Chuyển đổi góc thành progress
-        return ((angle - minAngle) / (maxAngle - minAngle) * 200).toInt()
-            .coerceIn(0, 200)
+        return ((angle - minAngle) / (maxAngle - minAngle) * 720).toInt()
+            .coerceIn(0, 720)
     }
 
     private fun updateValueDisplay(angle: Float) {
