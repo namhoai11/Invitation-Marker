@@ -1,16 +1,23 @@
 package com.example.invitationcard.ui.invitation_edit
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.MediaStore
 import android.text.Layout
 import android.util.Log
 import android.view.LayoutInflater
@@ -39,6 +46,7 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.lineheight.LineHe
 import com.example.invitationcard.ui.invitation_edit.edit_text.linewidth.LetterSpacingController
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
+import com.xiaopo.flying.sticker.DrawableSticker
 import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.StickerView
 import com.xiaopo.flying.sticker.TextSticker
@@ -57,6 +65,8 @@ class InvitationEditActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_EDIT_TEXT = 1001
+        private const val REQUEST_PICK_IMAGE = 1002
+        private const val REQUEST_STORAGE_PERMISSION = 1003
     }
 
     private lateinit var textColorController: TextColorController
@@ -185,7 +195,6 @@ class InvitationEditActivity : AppCompatActivity() {
 
             }
 
-            // Trong phương thức onStickerClicked trong StickerView.OnStickerOperationListener
             override fun onStickerClicked(sticker: Sticker) {
                 try {
                     hideAllStickerBorders()
@@ -194,17 +203,59 @@ class InvitationEditActivity : AppCompatActivity() {
                         showTextEditTools()
                         updateSizeControllerFromSticker(sticker)
 
-                        // Cập nhật trạng thái các nút theo sticker được chọn
+                        // *** LOGGING NÂNG CAO CHO VỊ TRÍ TEXT ***
+                        val matrix = sticker.matrix
+                        val values = FloatArray(9)
+                        matrix.getValues(values)
+
+                        // 1. Log thông tin cơ bản
+                        Log.d("TextPosition", "============= TEXT CLICKED POSITION =============")
+                        Log.d("TextPosition", "Text content: '${sticker.getText()}'")
+                        Log.d("TextPosition", "Matrix values - translation: (${values[Matrix.MTRANS_X]}, ${values[Matrix.MTRANS_Y]})")
+                        Log.d("TextPosition", "Matrix values - scale: (${values[Matrix.MSCALE_X]}, ${values[Matrix.MSCALE_Y]})")
+                        Log.d("TextPosition", "Matrix values - rotation/skew: " +
+                                "(${values[Matrix.MSKEW_X]}, ${values[Matrix.MSKEW_Y]}, ${values[Matrix.MPERSP_0]})")
+
+                        // 2. Lấy thông tin bounds
+                        try {
+                            val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
+                            realBoundsField.isAccessible = true
+                            val realBounds = realBoundsField.get(sticker) as Rect
+                            Log.d("TextPosition", "Text bounds: $realBounds")
+                            Log.d("TextPosition", "Text size in SP: ${sticker.getTextSizeSp()}")
+
+                            // 3. Tính toán vị trí thực tế
+                            val centerX = values[Matrix.MTRANS_X] + realBounds.exactCenterX() * values[Matrix.MSCALE_X]
+                            val centerY = values[Matrix.MTRANS_Y] + realBounds.exactCenterY() * values[Matrix.MSCALE_Y]
+                            Log.d("TextPosition", "Calculated center: ($centerX, $centerY)")
+
+                            // 4. Thông tin về view
+                            val viewWidth = stickerView.width
+                            val viewHeight = stickerView.height
+                            Log.d("TextPosition", "View dimensions: $viewWidth x $viewHeight")
+
+                            // 5. Lấy ID của sticker nếu có
+                            val stickerHashCode = sticker.hashCode()
+                            Log.d("TextPosition", "Sticker identity: #$stickerHashCode")
+
+                            // 6. Số lượng sticker trong view
+                            Log.d("TextPosition", "Total stickers in view: ${stickerView.stickerCount}")
+                        } catch (e: Exception) {
+                            Log.e("TextPosition", "Error getting bounds: ${e.message}")
+                        }
+
+                        // 7. Tổng hợp
+                        Log.d("TextPosition", "=============================================")
+
+                        // Cập nhật trạng thái UI như trước
                         updateBoldButtonState(sticker.isBold())
                         updateItalicButtonState(sticker.isItalic())
                         updateUppercaseButtonState(sticker.isUppercase())
 
-                        // Cập nhật curved text nếu đang hiển thị
                         if (isCurvedTextControlVisible) {
                             curvedTextController.setCurveAngleWithoutCallback(sticker.getCurveAngle())
                         }
 
-                        // Cập nhật alignment nếu đang hiển thị
                         if (isAlignmentControlVisible) {
                             textAlignmentController.setAlignmentWithoutCallback(sticker.getTextAlignment())
                         }
@@ -212,7 +263,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
                     stickerView.invalidate()
                 } catch (e: Exception) {
-                    Log.e("InvitationEditActivity", "Error in onStickerClicked", e)
+                    Log.e("TextPosition", "Error in onStickerClicked: ${e.message}")
                 }
             }
 
@@ -384,7 +435,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
         view.findViewById<LinearLayout>(R.id.btn_add_image).setOnClickListener {
             dialog.dismiss()
-            // TODO: Hiển thị giao diện chọn ảnh
+            addImage() // Thêm phương thức addImage
         }
 
         dialog.show()
@@ -412,6 +463,29 @@ class InvitationEditActivity : AppCompatActivity() {
                     currentSticker.setText(resultText)
                     currentSticker.resizeText()
                     stickerView.invalidate()
+                }
+            }
+        } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
+            // Xử lý kết quả chọn ảnh
+            data?.data?.let { uri ->
+                try {
+                    // Tạo bitmap từ URI
+                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        val source = ImageDecoder.createSource(contentResolver, uri)
+                        ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+                            decoder.isMutableRequired = true
+                        }
+                    } else {
+                        @Suppress("DEPRECATION")
+                        MediaStore.Images.Media.getBitmap(contentResolver, uri)
+                    }
+
+                    // Thêm bitmap vào StickerView
+                    addImageSticker(bitmap)
+                } catch (e: Exception) {
+                    Log.e("InvitationEditActivity", "Error loading image: ${e.message}")
+                    Toast.makeText(this, "Không thể tải ảnh", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1246,6 +1320,69 @@ class InvitationEditActivity : AppCompatActivity() {
 
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error updating UI controls: ${e.message}", e)
+        }
+    }
+
+    // 1. Triển khai phương thức addImage()
+    private fun addImage() {
+        // Kiểm tra quyền dựa trên phiên bản Android
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+ sử dụng quyền đặc biệt cho ảnh
+            if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.READ_MEDIA_IMAGES), REQUEST_STORAGE_PERMISSION)
+                return
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // Android 6-12 sử dụng quyền storage chung
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQUEST_STORAGE_PERMISSION)
+                return
+            }
+        }
+
+        // Nếu đã có quyền, mở trình chọn ảnh
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        startActivityForResult(intent, REQUEST_PICK_IMAGE)
+    }
+    // 3. Thêm phương thức tạo và thêm image sticker
+    private fun addImageSticker(bitmap: Bitmap) {
+        try {
+            // Tạo drawable từ bitmap
+            val drawable = BitmapDrawable(resources, bitmap)
+
+            // Tạo image sticker
+            val sticker = DrawableSticker(drawable)
+
+            // Thêm vào StickerView
+            stickerView.addSticker(sticker)
+
+            // Hiển thị công cụ chỉnh sửa ảnh
+            showImageEditTools()
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error adding image sticker: ${e.message}")
+        }
+    }
+
+    // 4. Phương thức hiển thị công cụ chỉnh sửa ảnh
+    private fun showImageEditTools() {
+        val editToolsContainer = findViewById<LinearLayout>(R.id.edit_tools_container)
+        val textToolsContainer = findViewById<HorizontalScrollView>(R.id.text_tools_container)
+        val imageToolsContainer = findViewById<HorizontalScrollView>(R.id.image_tools_container)
+
+        editToolsContainer.visibility = View.VISIBLE
+        textToolsContainer.visibility = View.GONE
+        imageToolsContainer.visibility = View.VISIBLE
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUEST_STORAGE_PERMISSION) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Quyền đã được cấp, mở trình chọn ảnh
+                addImage()
+            } else {
+                Toast.makeText(this, "Cần cấp quyền truy cập thư viện ảnh để thêm ảnh", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
