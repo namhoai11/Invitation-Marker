@@ -5,6 +5,8 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -19,6 +21,7 @@ import android.widget.HorizontalScrollView
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -345,6 +348,15 @@ class InvitationEditActivity : AppCompatActivity() {
             val currentSticker = getCurrentSticker()
             if (currentSticker is FlexibleTextSticker) {
                 toggleCurvedTextControl(currentSticker)
+            }
+        }
+        findViewById<ImageButton>(R.id.btn_duplicateText)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker is FlexibleTextSticker) {
+                duplicateCurrentTextSticker(currentSticker)
+            } else {
+                // Toast thông báo nếu không có text được chọn
+                android.widget.Toast.makeText(this, "Không có text nào được chọn để duplicate", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -1088,6 +1100,152 @@ class InvitationEditActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying curve angle: ${e.message}", e)
             }
+        }
+    }
+
+    // Trong InvitationEditActivity
+    private fun duplicateCurrentTextSticker(originalSticker: FlexibleTextSticker) {
+        try {
+            Log.d("InvitationEditActivity", "Starting text duplicate process")
+
+            // Chỉ tạo duplicate với thuộc tính copy
+            val offsetX = 20f
+            val offsetY = 20f
+            val duplicateSticker = originalSticker.createDuplicate(offsetX, offsetY)
+
+            // Lưu lại matrix dùng cho duplicate
+            val duplicateMatrix = Matrix(duplicateSticker.matrix)
+
+            // Thêm vào StickerView (có thể sẽ thay đổi matrix)
+            stickerView.addSticker(duplicateSticker)
+
+            // *** QUAN TRỌNG: ÁP DỤNG LẠI MATRIX SAU KHI THÊM ***
+            stickerView.post {
+                // Áp dụng lại matrix sau khi sticker đã được thêm vào view
+                duplicateSticker.setMatrix(duplicateMatrix)
+
+                hideAllStickerBorders()
+                focusOnDuplicateSticker(duplicateSticker)
+                Toast.makeText(this, "Text duplicate - offset đã được áp dụng", Toast.LENGTH_SHORT).show()
+            }
+
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error duplicating text: ${e.message}", e)
+        }
+    }
+
+    // *** THÊM METHOD TÍNH SMART OFFSET ***
+    private fun calculateSmartOffset(sticker: FlexibleTextSticker): Pair<Float, Float> {
+        try {
+            // Lấy bounds của sticker hiện tại
+            val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
+            realBoundsField.isAccessible = true
+            val realBounds = realBoundsField.get(sticker) as Rect
+
+            // Lấy matrix để tính kích thước thực tế sau transform
+            val matrix = sticker.matrix
+            val values = FloatArray(9)
+            matrix.getValues(values)
+            val scaleX = values[Matrix.MSCALE_X]
+            val scaleY = values[Matrix.MSCALE_Y]
+
+            // Tính kích thước thực tế
+            val actualWidth = realBounds.width() * Math.abs(scaleX)
+            val actualHeight = realBounds.height() * Math.abs(scaleY)
+
+            // *** OFFSET THÔNG MINH: 30% kích thước sticker + minimum 40px ***
+            val offsetX = Math.max(actualWidth * 0.3f, 40f)
+            val offsetY = Math.max(actualHeight * 0.3f, 40f)
+
+            Log.d("InvitationEditActivity", "Smart offset calculated: ($offsetX, $offsetY) for size: ${actualWidth}x${actualHeight}")
+
+            return Pair(offsetX, offsetY)
+
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error calculating smart offset: ${e.message}")
+            // Fallback to smaller default offset
+            return Pair(40f, 40f)
+        }
+    }
+
+    // Version có animation smooth hơn:
+
+    private fun duplicateCurrentTextStickerWithAnimation(originalSticker: FlexibleTextSticker) {
+        try {
+            // Tạo duplicate
+            val duplicateSticker = originalSticker.createDuplicate(80f, 80f)
+
+            // Add với animation
+            stickerView.addSticker(duplicateSticker)
+
+            // Animation focus smooth
+            stickerView.post {
+                // Fade out current border
+                hideAllStickerBorders()
+
+                // Delay một chút rồi focus vào duplicate
+                Handler(Looper.getMainLooper()).postDelayed({
+                    focusOnDuplicateSticker(duplicateSticker)
+                }, 100)
+            }
+
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error in animated duplicate: ${e.message}", e)
+        }
+    }
+
+    private fun focusOnDuplicateSticker(duplicateSticker: FlexibleTextSticker) {
+        try {
+            // *** SET DUPLICATE STICKER LÀM CURRENT STICKER ***
+            val handlingStickerField = StickerView::class.java.getDeclaredField("handlingSticker")
+            handlingStickerField.isAccessible = true
+            handlingStickerField.set(stickerView, duplicateSticker)
+
+            // *** HIỂN THỊ BORDER CHO DUPLICATE ***
+            duplicateSticker.setShowBorder(true)
+
+            // *** UPDATE UI CONTROLS THEO DUPLICATE ***
+            updateUIControlsFromSticker(duplicateSticker)
+
+            // *** SHOW TEXT EDIT TOOLS ***
+            showTextEditTools()
+
+            // *** FORCE REDRAW ***
+            stickerView.invalidate()
+
+            Log.d("InvitationEditActivity", "Duplicate sticker focused successfully")
+
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error in focusOnDuplicateSticker: ${e.message}", e)
+        }
+    }
+
+    private fun updateUIControlsFromSticker(sticker: FlexibleTextSticker) {
+        try {
+            // *** UPDATE SIZE CONTROLLER NẾU ĐANG HIỂN THỊ ***
+            if (isSizeControlVisible) {
+                updateSizeControllerFromSticker(sticker)
+            }
+
+            // *** UPDATE CURVED TEXT CONTROLLER NẾU ĐANG HIỂN THỊ ***
+            if (isCurvedTextControlVisible) {
+                curvedTextController.setCurveAngleWithoutCallback(sticker.getCurveAngle())
+            }
+
+            // *** UPDATE ALIGNMENT CONTROLLER NẾU ĐANG HIỂN THỊ ***
+            if (isAlignmentControlVisible) {
+                textAlignmentController.setAlignmentWithoutCallback(sticker.getTextAlignment())
+            }
+
+            // *** UPDATE BUTTON STATES ***
+            updateBoldButtonState(sticker.isBold())
+            updateItalicButtonState(sticker.isItalic())
+            updateUppercaseButtonState(sticker.isUppercase())
+
+            Log.d("InvitationEditActivity", "UI controls updated from duplicate sticker")
+
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error updating UI controls: ${e.message}", e)
         }
     }
 }

@@ -962,7 +962,8 @@ class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
 
     private fun calculateLetterSpacing(absAngle: Float, textSize: Float): Float {
         return when {
-            absAngle < 30f -> 0f
+            absAngle < 1f -> textSize * 0.001f   // Minimal spacing ngay từ 0°
+            absAngle < 30f -> textSize * 0.005f  // Tăng dần từ 0°
             absAngle < 90f -> textSize * 0.01f * (absAngle / 90f)
             absAngle < 180f -> textSize * 0.02f
             else -> textSize * 0.03f * Math.min(absAngle / 270f, 1f)
@@ -1030,4 +1031,78 @@ class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
             forceRedraw()
         }
     }
+
+
+
+// Thêm debug chi tiết vào createDuplicate:
+
+    fun createDuplicate(offsetX: Float = 50f, offsetY: Float = 50f): FlexibleTextSticker {
+        try {
+            val duplicateSticker = FlexibleTextSticker(context)
+
+            // Copy properties as before
+            duplicateSticker.isInitialSetup = false
+            duplicateSticker.originalText = this.originalText
+            duplicateSticker.customTextSizeSp = this.customTextSizeSp
+            duplicateSticker.currentTextColor = this.currentTextColor
+            duplicateSticker.isBold = this.isBold
+            duplicateSticker.isItalic = this.isItalic
+            duplicateSticker.currentTypeface = this.currentTypeface
+            duplicateSticker.currentAlignment = this.currentAlignment
+            duplicateSticker.lineHeightPercent = this.lineHeightPercent
+            duplicateSticker.letterSpacing = this.letterSpacing
+            duplicateSticker.isUppercase = this.isUppercase
+            duplicateSticker.curveAngle = this.curveAngle
+            duplicateSticker.showCustomBorder = this.showCustomBorder
+
+            duplicateSticker.setTextSizeSp(this.customTextSizeSp)
+
+            val finalText = if (this.isUppercase) this.originalText.uppercase() else this.originalText
+            duplicateSticker.setText(finalText)
+
+            // *** ULTRA-SIMPLE APPROACH: COPY ORIGINAL MATRIX & TRANSLATE ***
+
+            // 1. Clone original matrix
+            val duplicateMatrix = Matrix(this.matrix)
+
+            // 2. Add offset translation
+            duplicateMatrix.postTranslate(offsetX, offsetY)
+
+            // 3. Apply to duplicate sticker
+            duplicateSticker.setMatrix(duplicateMatrix)
+
+            // Debug
+            val values = FloatArray(9)
+            this.matrix.getValues(values)
+            val newValues = FloatArray(9)
+            duplicateMatrix.getValues(newValues)
+
+            Log.d("FlexibleTextSticker", "=== MATRIX COPY DEBUG ===")
+            Log.d("FlexibleTextSticker", "Original position: (${values[Matrix.MTRANS_X]}, ${values[Matrix.MTRANS_Y]})")
+            Log.d("FlexibleTextSticker", "Duplicate position: (${newValues[Matrix.MTRANS_X]}, ${newValues[Matrix.MTRANS_Y]})")
+            Log.d("FlexibleTextSticker", "Offset applied: ($offsetX, $offsetY)")
+            Log.d("FlexibleTextSticker", "Scale preserved: ${newValues[Matrix.MSCALE_X]}")
+
+            return duplicateSticker
+
+        } catch (e: Exception) {
+            Log.e("FlexibleTextSticker", "Error creating duplicate: ${e.message}", e)
+            throw e
+        }
+    }
+
+
+    fun debugMatrix() {
+        val values = FloatArray(9)
+        matrix.getValues(values)
+        Log.d("FlexibleTextSticker", "=== MATRIX DEBUG ===")
+        Log.d("FlexibleTextSticker", "ScaleX: ${values[Matrix.MSCALE_X]}")
+        Log.d("FlexibleTextSticker", "ScaleY: ${values[Matrix.MSCALE_Y]}")
+        Log.d("FlexibleTextSticker", "TransX: ${values[Matrix.MTRANS_X]}")
+        Log.d("FlexibleTextSticker", "TransY: ${values[Matrix.MTRANS_Y]}")
+        Log.d("FlexibleTextSticker", "Size: ${customTextSizeSp}sp")
+        Log.d("FlexibleTextSticker", "===================")
+    }
+
+
 }
