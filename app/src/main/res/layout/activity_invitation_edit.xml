@@ -403,6 +403,14 @@
                         android:contentDescription="TODO"
                         android:padding="12dp"
                         android:src="@drawable/rotate_image" />
+                    <ImageButton
+                        android:id="@+id/btn_lockImage"
+                        android:layout_width="56dp"
+                        android:layout_height="match_parent"
+                        android:background="?attr/selectableItemBackground"
+                        android:contentDescription="Lock/Unlock image manipulation"
+                        android:padding="12dp"
+                        android:src="@drawable/ic_unlock" />
                 </LinearLayout>
             </HorizontalScrollView>
         </LinearLayout>

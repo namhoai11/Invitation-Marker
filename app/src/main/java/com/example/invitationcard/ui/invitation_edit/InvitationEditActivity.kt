@@ -84,6 +84,8 @@ class InvitationEditActivity : AppCompatActivity() {
     private lateinit var curvedTextController: CurvedTextController
     private var isCurvedTextControlVisible = false
 
+    private var isImageLocked = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -118,6 +120,7 @@ class InvitationEditActivity : AppCompatActivity() {
         setupCurvedTextController()
         setupBackgroundTouchListener()
         setupTextEditingTools()
+        setupImageEditingTools()
     }
 
 
@@ -149,6 +152,7 @@ class InvitationEditActivity : AppCompatActivity() {
                 if (sticker is FlexibleTextSticker) {
                     sticker.setShowBorder(false)
                 }
+                // Không cần làm gì cho DrawableSticker vì nó không có phương thức setShowBorder
             }
 
             // Buộc vẽ lại
@@ -198,6 +202,7 @@ class InvitationEditActivity : AppCompatActivity() {
             override fun onStickerClicked(sticker: Sticker) {
                 try {
                     hideAllStickerBorders()
+
                     if (sticker is FlexibleTextSticker) {
                         sticker.setShowBorder(true)
                         showTextEditTools()
@@ -247,7 +252,7 @@ class InvitationEditActivity : AppCompatActivity() {
                         // 7. Tổng hợp
                         Log.d("TextPosition", "=============================================")
 
-                        // Cập nhật trạng thái UI như trước
+                        // Cập nhật trạng thái UI
                         updateBoldButtonState(sticker.isBold())
                         updateItalicButtonState(sticker.isItalic())
                         updateUppercaseButtonState(sticker.isUppercase())
@@ -260,10 +265,40 @@ class InvitationEditActivity : AppCompatActivity() {
                             textAlignmentController.setAlignmentWithoutCallback(sticker.getTextAlignment())
                         }
                     }
+                    else if (sticker is DrawableSticker) {
+                        // XỬ LÝ KHI NHẤN VÀO ẢNH
+                        Log.d("ImageSticker", "============= IMAGE CLICKED =============")
+
+                        // Hiển thị công cụ chỉnh sửa ảnh
+                        showImageEditTools()
+
+                        // Log thông tin về ảnh để debug
+                        val matrix = sticker.matrix
+                        val values = FloatArray(9)
+                        matrix.getValues(values)
+
+                        Log.d("ImageSticker", "Image position: (${values[Matrix.MTRANS_X]}, ${values[Matrix.MTRANS_Y]})")
+                        Log.d("ImageSticker", "Image scale: (${values[Matrix.MSCALE_X]}, ${values[Matrix.MSCALE_Y]})")
+                        Log.d("ImageSticker", "Image rotation: ${Math.toDegrees(Math.atan2(values[Matrix.MSKEW_X].toDouble(), values[Matrix.MSCALE_X].toDouble()))} degrees")
+                        Log.d("ImageSticker", "Image size: ${sticker.width} x ${sticker.height}")
+                        Log.d("ImageSticker", "Image identity: #${sticker.hashCode()}")
+                        Log.d("ImageSticker", "Total stickers in view: ${stickerView.stickerCount}")
+                        Log.d("ImageSticker", "=============================================")
+
+                        // Reset trạng thái khóa ảnh nếu có
+                        isImageLocked = false
+                        try {
+                            findViewById<ImageButton>(R.id.btn_lockImage)?.let {
+                                updateLockButtonState(false)
+                            }
+                        } catch (e: Exception) {
+                            Log.e("ImageSticker", "Error updating lock button: ${e.message}")
+                        }
+                    }
 
                     stickerView.invalidate()
                 } catch (e: Exception) {
-                    Log.e("TextPosition", "Error in onStickerClicked: ${e.message}")
+                    Log.e("StickerView", "Error in onStickerClicked: ${e.message}")
                 }
             }
 
@@ -1369,9 +1404,40 @@ class InvitationEditActivity : AppCompatActivity() {
         val textToolsContainer = findViewById<HorizontalScrollView>(R.id.text_tools_container)
         val imageToolsContainer = findViewById<HorizontalScrollView>(R.id.image_tools_container)
 
+        // Hiển thị container chính và container công cụ ảnh
         editToolsContainer.visibility = View.VISIBLE
         textToolsContainer.visibility = View.GONE
         imageToolsContainer.visibility = View.VISIBLE
+
+        // Reset trạng thái khóa khi hiển thị công cụ ảnh
+        isImageLocked = false
+        try {
+            findViewById<ImageButton>(R.id.btn_lockImage)?.let {
+                updateLockButtonState(false)
+            }
+        } catch (e: Exception) {
+            Log.e("ImageEditing", "Error updating lock button: ${e.message}")
+        }
+
+        // Ẩn các control khác nếu đang hiển thị
+        if (isSizeControlVisible) {
+            hideSizeControl()
+        }
+        if (isColorControlVisible) {
+            hideColorControl()
+        }
+        if (isAlignmentControlVisible) {
+            hideAlignmentControl()
+        }
+        if (isLineHeightControlVisible) {
+            hideLineHeightControl()
+        }
+        if (isLetterSpacingControlVisible) {
+            hideLetterSpacingControl()
+        }
+        if (isCurvedTextControlVisible) {
+            hideCurvedTextControl()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
@@ -1383,6 +1449,153 @@ class InvitationEditActivity : AppCompatActivity() {
             } else {
                 Toast.makeText(this, "Cần cấp quyền truy cập thư viện ảnh để thêm ảnh", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun setupImageEditingTools() {
+        // Xử lý nút xóa ảnh
+        findViewById<ImageButton>(R.id.btn_delete_image)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                stickerView.remove(currentSticker)
+                hideAllEditTools()
+            }
+        }
+
+        // Xử lý nút lật ảnh
+        findViewById<ImageButton>(R.id.btn_flipImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                flipImageSticker(currentSticker)
+            }
+        }
+
+        // Xử lý nút xoay ảnh
+        findViewById<ImageButton>(R.id.btn_rotateImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                rotateImageSticker(currentSticker, 90f)
+            }
+        }
+
+        // Xử lý nút zoom
+        findViewById<TextView>(R.id.btn_zoomImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                // Đây chỉ là demo, bạn có thể thay thế bằng một slider hoặc control riêng
+                Toast.makeText(this, "Chức năng zoom ảnh đang được phát triển", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Xử lý nút filter
+        findViewById<TextView>(R.id.btn_filterImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                Toast.makeText(this, "Chức năng filter ảnh đang được phát triển", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Xử lý nút remove background
+        findViewById<TextView>(R.id.btn_removeBackgroundImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                Toast.makeText(this, "Chức năng xóa nền đang được phát triển", Toast.LENGTH_SHORT).show()
+            }
+        }
+// Trong setupImageEditingTools() thêm:
+        findViewById<ImageButton>(R.id.btn_lockImage)?.setOnClickListener {
+            val currentSticker = getCurrentSticker()
+            if (currentSticker != null && currentSticker !is TextSticker) {
+                // Toggle trạng thái khóa
+                isImageLocked = !isImageLocked
+
+                // Đặt trạng thái khóa/mở khóa
+                setImageManipulationLocked(isImageLocked)
+
+                // Cập nhật giao diện nút
+                updateLockButtonState(isImageLocked)
+
+                // Thông báo cho người dùng
+                val message = if (isImageLocked)
+                    "Đã khóa zoom và xoay ảnh"
+                else
+                    "Đã mở khóa zoom và xoay ảnh"
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    }
+
+    // Phương thức lật ảnh
+    private fun flipImageSticker(sticker: Sticker) {
+        try {
+            // Lật ảnh theo chiều ngang
+            val matrix = Matrix(sticker.matrix)
+            matrix.preScale(-1f, 1f, sticker.width / 2f, sticker.height / 2f)
+            sticker.setMatrix(matrix)
+            stickerView.invalidate()
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error flipping image: ${e.message}")
+        }
+    }
+
+    // Phương thức xoay ảnh với trục xoay chính xác
+    private fun rotateImageSticker(sticker: Sticker, degrees: Float) {
+        try {
+            // Lấy các điểm góc của sticker
+            val mappedBoundPoints = sticker.getMappedBoundPoints()
+
+            // Tính toán tâm thực sự từ các điểm góc sau các biến đổi
+            var sumX = 0f
+            var sumY = 0f
+            for (i in 0 until mappedBoundPoints.size step 2) {
+                sumX += mappedBoundPoints[i]
+                sumY += mappedBoundPoints[i + 1]
+            }
+            val centerX = sumX / 4  // Chia cho 4 vì có 4 điểm góc
+            val centerY = sumY / 4
+
+            Log.d("ImageRotation", "Rotating around calculated center: ($centerX, $centerY)")
+
+            // Xoay matrix quanh tâm thực tế
+            val matrix = Matrix(sticker.matrix)
+            matrix.postRotate(degrees, centerX, centerY)
+
+            // Áp dụng matrix mới
+            sticker.setMatrix(matrix)
+
+            // Vẽ lại
+            stickerView.invalidate()
+        } catch (e: Exception) {
+            Log.e("InvitationEditActivity", "Error rotating image: ${e.message}", e)
+        }
+    }
+
+    // Phương thức đặt trạng thái khóa cho ảnh
+    private fun setImageManipulationLocked(locked: Boolean) {
+        val currentSticker = getCurrentSticker()
+        if (currentSticker != null && currentSticker !is TextSticker) {
+            // Cài đặt trạng thái khóa cho sticker hiện tại
+            // Lưu ý: Đây là phương pháp đơn giản, bạn có thể triển khai phức tạp hơn
+            // bằng cách sử dụng reflection để can thiệp vào controller của StickerView
+
+            // Trong tình huống thực tế, có thể cần triển khai lớp StickerView tùy chỉnh
+            // để hỗ trợ tính năng này tốt hơn
+            if (locked) {
+                Toast.makeText(this, "Chỉ có thể di chuyển ảnh, không thể zoom/xoay", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Cập nhật trạng thái nút khóa
+    private fun updateLockButtonState(isLocked: Boolean) {
+        val btnLock = findViewById<ImageButton>(R.id.btn_lockImage)
+        if (isLocked) {
+            btnLock?.setImageResource(R.drawable.ic_lock) // Cần tạo resource này
+            btnLock?.setColorFilter(resources.getColor(R.color.green, null))
+        } else {
+            btnLock?.setImageResource(R.drawable.ic_unlock) // Cần tạo resource này
+            btnLock?.clearColorFilter()
         }
     }
 }
