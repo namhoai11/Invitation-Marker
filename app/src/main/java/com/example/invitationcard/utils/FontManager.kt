@@ -125,4 +125,81 @@ class FontManager(private val context: Context) {
             FontItem("Righteous", "righteous", "Display", googleFontName = "righteous")
         )
     }
+
+    /**
+     * Tìm font theo tên, hỗ trợ tìm kiếm không phân biệt chữ hoa/thường và tìm gần đúng
+     */
+    suspend fun findFontByName(fontName: String): FontItem? {
+        val allFonts = getPopularFonts()
+
+        // Xử lý tên font để tăng khả năng khớp
+        val processedName = fontName.lowercase()
+            .replace("-", " ")
+            .replace("_", " ")
+            .trim()
+
+        // Thử tìm khớp chính xác (không phân biệt chữ hoa/thường)
+        allFonts.find { it.name.lowercase() == processedName }?.let {
+            // Đảm bảo font đã được load
+            if (it.typeface == null && !it.isSystemFont) {
+                loadFont(it)
+            }
+            return it
+        }
+
+        // Tìm font có chứa tên gần đúng
+        val fontsByName = allFonts.filter {
+            it.name.lowercase().contains(processedName) ||
+                    processedName.contains(it.name.lowercase())
+        }
+
+        if (fontsByName.isNotEmpty()) {
+            val bestMatch = fontsByName.first()
+            // Đảm bảo font đã được load
+            if (bestMatch.typeface == null && !bestMatch.isSystemFont) {
+                loadFont(bestMatch)
+            }
+            return bestMatch
+        }
+
+        // Thử tìm kiếm theo từng phần của tên
+        val nameParts = processedName.split(" ")
+        for (part in nameParts) {
+            if (part.length < 3) continue // Bỏ qua từ quá ngắn
+
+            allFonts.find { it.name.lowercase().contains(part) }?.let {
+                // Đảm bảo font đã được load
+                if (it.typeface == null && !it.isSystemFont) {
+                    loadFont(it)
+                }
+                return it
+            }
+        }
+
+        // Nếu không tìm thấy, trả về font mặc định
+        val defaultFont = allFonts.first()
+        if (defaultFont.typeface == null && !defaultFont.isSystemFont) {
+            loadFont(defaultFont)
+        }
+        return defaultFont
+    }
+
+    // Thêm vào FontManager
+    fun checkFontsAvailability() {
+        val fonts = listOf("sans-serif", "sans-serif-bold", "serif", "monospace", "cursive")
+        for (fontName in fonts) {
+            val typeface = Typeface.create(fontName, Typeface.NORMAL)
+            Log.d("FontManager", "System font '$fontName' available: ${typeface != null}")
+        }
+
+        // Kiểm tra font từ assets (nếu có)
+        try {
+            val assetManager = context.assets
+            val fontFiles = assetManager.list("fonts") ?: emptyArray()
+            Log.d("FontManager", "Font files in assets/fonts/: ${fontFiles.joinToString(", ")}")
+        } catch (e: Exception) {
+            Log.e("FontManager", "Error checking fonts in assets", e)
+        }
+    }
+
 }

@@ -11,6 +11,7 @@ import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
@@ -36,6 +37,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.invitationcard.R
 import com.example.invitationcard.model.FontItem
+import com.example.invitationcard.model.TemplateElement
 import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSelectionBottomSheet
 import com.example.invitationcard.ui.invitation_edit.edit_text.font.FontSizeController
 import com.example.invitationcard.ui.invitation_edit.edit_text.alignment.TextAlignmentController
@@ -46,6 +48,10 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.lineheight.LineHe
 import com.example.invitationcard.ui.invitation_edit.edit_text.linewidth.LetterSpacingController
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
+import com.example.invitationcard.utils.LockableDrawableSticker
+import com.example.invitationcard.utils.PsdParser
+import com.example.invitationcard.utils.SvgTemplateLoader
+import com.example.invitationcard.utils.TemplateRenderer
 import com.xiaopo.flying.sticker.DrawableSticker
 import com.xiaopo.flying.sticker.Sticker
 import com.xiaopo.flying.sticker.StickerView
@@ -86,6 +92,14 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private var isImageLocked = false
 
+    private lateinit var psdParser: PsdParser
+    private lateinit var templateRenderer: TemplateRenderer
+    private var backgroundStickerRef: LockableDrawableSticker? = null
+
+    private val lockedStickers = HashMap<Int, Boolean>()
+
+    private lateinit var svgTemplateLoader: SvgTemplateLoader
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -108,10 +122,54 @@ class InvitationEditActivity : AppCompatActivity() {
         setupStickerViewListeners()
         stickerView.setLocked(false)
 
-        // QUAN TRỌNG: Đặt showBorder = true bằng phản chiếu (reflection)
-//        setupBorderAppearance()
-
         fontManager = FontManager(this)
+        templateRenderer = TemplateRenderer(this, fontManager)
+
+        svgTemplateLoader = SvgTemplateLoader(this, templateRenderer, fontManager)
+
+        Log.d("InvitationEditActivity", "Starting template loading process")
+
+        stickerView.post {
+            val viewWidth = stickerView.width
+            val viewHeight = stickerView.height
+            Log.d("InvitationEditActivity", "Initial StickerView dimensions: ${viewWidth}x${viewHeight}")
+
+            if (viewWidth > 0 && viewHeight > 0) {
+                val templateFile = "invitation_template.svg"
+                try {
+                    val files = assets.list("")
+                    if (files?.contains(templateFile) == true) {
+                        loadSvgTemplate(templateFile)
+                    } else {
+                        Log.d("InvitationEditActivity", "Template file không tồn tại, tạo template trống")
+                        loadTestSvgTemplate(viewWidth, viewHeight)
+                    }
+                } catch (e: Exception) {
+                    Log.e("InvitationEditActivity", "Lỗi khi kiểm tra file template", e)
+                    // Tạo template trống nếu có lỗi
+                    loadTestSvgTemplate(viewWidth, viewHeight)
+                }
+            }
+        }
+
+        stickerView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+            val width = right - left
+            val height = bottom - top
+
+            if (width > 0 && height > 0 && (width != oldRight - oldLeft || height != oldBottom - oldTop)) {
+                Log.d("InvitationEditActivity", "StickerView layout changed: ${width}x${height}")
+
+                // Chỉ tải template trống nếu chưa có sticker nào
+                if (stickerView.stickerCount == 0) {
+                    loadTestSvgTemplate(width, height)
+                }
+            }
+        }
+
+        // Thêm vào cuối onCreate của InvitationEditActivity
+        fontManager.checkFontsAvailability()
+
+        // Thiết lập các controller (không thay đổi)
         setupFontSizeController()
         setupTextColorController()
         setupTextAlignmentController()
@@ -121,6 +179,213 @@ class InvitationEditActivity : AppCompatActivity() {
         setupBackgroundTouchListener()
         setupTextEditingTools()
         setupImageEditingTools()
+    }
+
+    private fun loadSvgTemplate(templatePath: String) {
+        lifecycleScope.launch {
+            try {
+                // Xóa tất cả stickers hiện tại
+                stickerView.removeAllStickers()
+
+                // Tải template SVG
+                val (elements, background, dimensions) = svgTemplateLoader.loadSvgTemplateFromAssets(templatePath)
+
+                Log.d("TemplateLoading", "SVG loaded with ${elements.size} elements")
+
+                // Xử lý trường hợp không có element và không có background
+                if (elements.isEmpty() && background == null) {
+                    Log.d("TemplateLoading", "Template rỗng, tạo template trống thay thế")
+                    loadTestSvgTemplate(stickerView.width, stickerView.height)
+                    return@launch
+                }
+
+                // Thêm background nếu có
+                background?.let { bitmap ->
+                    val backgroundDrawable = BitmapDrawable(resources, bitmap)
+                    val backgroundSticker = LockableDrawableSticker(backgroundDrawable)
+
+                    // Đặt vị trí phù hợp với view
+                    val matrix = Matrix()
+                    val viewWidth = stickerView.width.toFloat()
+                    val viewHeight = stickerView.height.toFloat()
+
+                    // Căn giữa
+                    val translateX = (viewWidth - bitmap.width) / 2f
+                    val translateY = (viewHeight - bitmap.height) / 2f
+                    matrix.postTranslate(translateX, translateY)
+
+                    backgroundSticker.setMatrix(matrix)
+                    backgroundSticker.isLocked = true
+
+                    // Thêm background vào index 0
+                    stickerView.addSticker(backgroundSticker, 0)
+                    Log.d("TemplateLoading", "Background added from SVG")
+                }
+
+                // QUAN TRỌNG: Sắp xếp elements theo zIndex TĂNG dần
+                val sortedElements = elements.sortedBy { it.zIndex }
+
+                // Thêm các element khác
+                var successCount = 0
+                for (element in sortedElements.filter { it.id != "background" }) {
+                    try {
+                        Log.d("TemplateLoading", "Creating sticker for element: ${element.id}, z: ${element.zIndex}")
+                        val sticker = templateRenderer.createStickerFromElement(element)
+
+                        if (sticker != null) {
+                            stickerView.addSticker(sticker)
+                            successCount++
+                            Log.d("TemplateLoading", "Successfully added sticker for element: ${element.id}")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("TemplateLoading", "Error creating sticker for element ${element.id}", e)
+                    }
+                }
+
+                Log.d("TemplateLoading", "SVG template loaded with $successCount stickers")
+
+                // Nếu không có sticker nào được tạo và không có background, hiển thị template trống
+                if (successCount == 0 && background == null) {
+                    Log.d("TemplateLoading", "Không tạo được sticker nào, tạo template trống thay thế")
+                    loadTestSvgTemplate(stickerView.width, stickerView.height)
+                }
+
+            } catch (e: Exception) {
+                Log.e("TemplateLoading", "Error loading SVG template", e)
+                Toast.makeText(this@InvitationEditActivity,
+                    "Không thể tải template SVG: ${e.message}", Toast.LENGTH_SHORT).show()
+
+                // Tạo template trống nếu có lỗi
+                loadTestSvgTemplate(stickerView.width, stickerView.height)
+            }
+        }
+    }
+
+    private fun loadTestSvgTemplate(viewWidth: Int, viewHeight: Int) {
+        lifecycleScope.launch {
+            try {
+                // Xóa stickers hiện tại
+                stickerView.removeAllStickers()
+
+                Log.d("TemplateLoading", "Không có template mẫu, tạo template trống với kích thước: ${viewWidth}x${viewHeight}")
+
+                // Tạo background màu trắng đơn giản
+                val backgroundBitmap = Bitmap.createBitmap(viewWidth, viewHeight, Bitmap.Config.ARGB_8888)
+                backgroundBitmap.eraseColor(Color.WHITE) // Đổi sang màu trắng đơn giản
+                val backgroundDrawable = BitmapDrawable(resources, backgroundBitmap)
+                val backgroundSticker = LockableDrawableSticker(backgroundDrawable)
+                backgroundSticker.isLocked = true
+
+                // Thêm background vào sticker view
+                stickerView.addSticker(backgroundSticker, 0)
+                Log.d("TemplateLoading", "Đã thêm background trống")
+
+//                // Thêm text hướng dẫn đơn giản
+//                val helpText = FlexibleTextSticker(this@InvitationEditActivity).apply {
+//                    setText("Nhấn nút + để thêm văn bản hoặc hình ảnh")
+//                    setTextAlign(Layout.Alignment.ALIGN_CENTER)
+//                    setTypeface(Typeface.DEFAULT)
+//                    setCustomTextColor(Color.GRAY)
+//                    setTextSizeSp(16)
+//                }
+//
+//                // Định vị ở giữa màn hình
+//                val matrix = Matrix()
+//                matrix.postTranslate(
+//                    (viewWidth / 2 - helpText.width / 2).toFloat(),
+//                    (viewHeight / 2 - helpText.height / 2).toFloat()
+//                )
+//                helpText.setMatrix(matrix)
+//
+//                // Thêm text vào StickerView
+//                stickerView.addSticker(helpText)
+
+                // Force redraw
+                stickerView.invalidate()
+
+            } catch (e: Exception) {
+                Log.e("TemplateLoading", "Lỗi khi tạo template trống", e)
+                Toast.makeText(this@InvitationEditActivity,
+                    "Không thể tạo template: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun loadPsdTemplate(templatePath: String) {
+        lifecycleScope.launch {
+            try {
+                // Xóa tất cả stickers hiện tại
+                stickerView.removeAllStickers()
+
+                // Phân tích file PSD
+                val (elements, background, dimensions) = psdParser.parsePsdFromAssets(templatePath)
+
+                Log.d("InvitationEditActivity", "Loaded template with ${elements.size} elements")
+
+                // QUAN TRỌNG: Sắp xếp elements theo zIndex trước khi tạo sticker
+                val sortedElements = elements.sortedBy { it.zIndex }
+
+                // Tạo và thêm stickers từ elements đã sắp xếp
+                val stickers = mutableListOf<Sticker>()
+                for (element in sortedElements) {
+                    try {
+                        val sticker = templateRenderer.createStickerFromElement(element)
+                        if (sticker != null) {
+                            // Khóa các phần tử không thể chỉnh sửa
+                            if (!element.isEditable && sticker is LockableDrawableSticker) {
+                                sticker.isLocked = true
+                            }
+
+                            stickers.add(sticker)
+                            stickerView.addSticker(sticker)
+
+                            // Log để debug
+                            when (element) {
+                                is TemplateElement.TextElement -> {
+                                    Log.d("InvitationEditActivity", "Added text sticker: '${element.text}', bounds: ${element.bounds}")
+                                }
+                                is TemplateElement.ImageElement -> {
+                                    Log.d("InvitationEditActivity", "Added image sticker: ${element.id}, bounds: ${element.bounds}")
+                                }
+                                else -> {
+                                    Log.d("InvitationEditActivity", "Added other sticker: ${element.id}, bounds: ${element.bounds}")
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("InvitationEditActivity", "Error creating sticker for element ${element.id}", e)
+                    }
+                }
+
+                // Đặt background nếu có và không đã được thêm vào elements
+                if (background != null && !elements.any { it.id == "background" }) {
+                    val backgroundDrawable = BitmapDrawable(resources, background)
+                    val backgroundSticker = LockableDrawableSticker(backgroundDrawable)
+
+                    // Căn chỉnh để phủ toàn màn hình
+                    val matrix = Matrix()
+                    val viewWidth = stickerView.width.toFloat()
+                    val viewHeight = stickerView.height.toFloat()
+                    val translateX = (viewWidth - background.width) / 2
+                    val translateY = (viewHeight - background.height) / 2
+                    matrix.setTranslate(translateX, translateY)
+
+                    backgroundSticker.setMatrix(matrix)
+                    backgroundSticker.isLocked = true
+
+                    // Thêm vào đầu tiên để ở dưới cùng
+                    stickerView.addSticker(backgroundSticker, 0)
+                    backgroundStickerRef = backgroundSticker
+                }
+
+                Log.d("InvitationEditActivity", "Template loaded successfully with ${stickers.size} stickers")
+
+            } catch (e: Exception) {
+                Log.e("InvitationEditActivity", "Error loading PSD template", e)
+                Toast.makeText(this@InvitationEditActivity,
+                    "Failed to load template: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
 
@@ -138,24 +403,19 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Thêm phương thức mới vào InvitationEditActivity
     private fun hideAllStickerBorders() {
         try {
-            // Lấy danh sách tất cả sticker từ StickerView
             val stickersField = StickerView::class.java.getDeclaredField("stickers")
             stickersField.isAccessible = true
             @Suppress("UNCHECKED_CAST")
             val stickers = stickersField.get(stickerView) as? List<Sticker>
 
-            // Nếu danh sách sticker tồn tại, ẩn border cho tất cả
             stickers?.forEach { sticker ->
                 if (sticker is FlexibleTextSticker) {
                     sticker.setShowBorder(false)
                 }
-                // Không cần làm gì cho DrawableSticker vì nó không có phương thức setShowBorder
             }
 
-            // Buộc vẽ lại
             stickerView.invalidate()
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error hiding all sticker borders", e)
@@ -164,18 +424,14 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private fun unselectCurrentSticker() {
         try {
-            // Đặt handlingSticker = null
             val field = StickerView::class.java.getDeclaredField("handlingSticker")
             field.isAccessible = true
             field.set(stickerView, null)
 
-            // Ẩn tất cả border
             hideAllStickerBorders()
 
-            // Ẩn các công cụ
             hideAllEditTools()
 
-            // Buộc vẽ lại
             stickerView.invalidate()
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error in unselectCurrentSticker", e)
@@ -188,7 +444,6 @@ class InvitationEditActivity : AppCompatActivity() {
                 try {
                     hideAllStickerBorders()
                     if (sticker is FlexibleTextSticker) {
-                        // Hiển thị border khi thêm mới
                         sticker.setShowBorder(true)
                         showTextEditTools()
                     }
@@ -203,17 +458,19 @@ class InvitationEditActivity : AppCompatActivity() {
                 try {
                     hideAllStickerBorders()
 
+                    if (isStickerLocked(sticker)) {
+                        return
+                    }
+
                     if (sticker is FlexibleTextSticker) {
                         sticker.setShowBorder(true)
                         showTextEditTools()
                         updateSizeControllerFromSticker(sticker)
 
-                        // *** LOGGING NÂNG CAO CHO VỊ TRÍ TEXT ***
                         val matrix = sticker.matrix
                         val values = FloatArray(9)
                         matrix.getValues(values)
 
-                        // 1. Log thông tin cơ bản
                         Log.d("TextPosition", "============= TEXT CLICKED POSITION =============")
                         Log.d("TextPosition", "Text content: '${sticker.getText()}'")
                         Log.d("TextPosition", "Matrix values - translation: (${values[Matrix.MTRANS_X]}, ${values[Matrix.MTRANS_Y]})")
@@ -221,7 +478,6 @@ class InvitationEditActivity : AppCompatActivity() {
                         Log.d("TextPosition", "Matrix values - rotation/skew: " +
                                 "(${values[Matrix.MSKEW_X]}, ${values[Matrix.MSKEW_Y]}, ${values[Matrix.MPERSP_0]})")
 
-                        // 2. Lấy thông tin bounds
                         try {
                             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
                             realBoundsField.isAccessible = true
@@ -229,30 +485,24 @@ class InvitationEditActivity : AppCompatActivity() {
                             Log.d("TextPosition", "Text bounds: $realBounds")
                             Log.d("TextPosition", "Text size in SP: ${sticker.getTextSizeSp()}")
 
-                            // 3. Tính toán vị trí thực tế
                             val centerX = values[Matrix.MTRANS_X] + realBounds.exactCenterX() * values[Matrix.MSCALE_X]
                             val centerY = values[Matrix.MTRANS_Y] + realBounds.exactCenterY() * values[Matrix.MSCALE_Y]
                             Log.d("TextPosition", "Calculated center: ($centerX, $centerY)")
 
-                            // 4. Thông tin về view
                             val viewWidth = stickerView.width
                             val viewHeight = stickerView.height
                             Log.d("TextPosition", "View dimensions: $viewWidth x $viewHeight")
 
-                            // 5. Lấy ID của sticker nếu có
                             val stickerHashCode = sticker.hashCode()
                             Log.d("TextPosition", "Sticker identity: #$stickerHashCode")
 
-                            // 6. Số lượng sticker trong view
                             Log.d("TextPosition", "Total stickers in view: ${stickerView.stickerCount}")
                         } catch (e: Exception) {
                             Log.e("TextPosition", "Error getting bounds: ${e.message}")
                         }
 
-                        // 7. Tổng hợp
                         Log.d("TextPosition", "=============================================")
 
-                        // Cập nhật trạng thái UI
                         updateBoldButtonState(sticker.isBold())
                         updateItalicButtonState(sticker.isItalic())
                         updateUppercaseButtonState(sticker.isUppercase())
@@ -266,13 +516,10 @@ class InvitationEditActivity : AppCompatActivity() {
                         }
                     }
                     else if (sticker is DrawableSticker) {
-                        // XỬ LÝ KHI NHẤN VÀO ẢNH
                         Log.d("ImageSticker", "============= IMAGE CLICKED =============")
 
-                        // Hiển thị công cụ chỉnh sửa ảnh
                         showImageEditTools()
 
-                        // Log thông tin về ảnh để debug
                         val matrix = sticker.matrix
                         val values = FloatArray(9)
                         matrix.getValues(values)
@@ -285,7 +532,6 @@ class InvitationEditActivity : AppCompatActivity() {
                         Log.d("ImageSticker", "Total stickers in view: ${stickerView.stickerCount}")
                         Log.d("ImageSticker", "=============================================")
 
-                        // Reset trạng thái khóa ảnh nếu có
                         isImageLocked = false
                         try {
                             findViewById<ImageButton>(R.id.btn_lockImage)?.let {
@@ -304,21 +550,27 @@ class InvitationEditActivity : AppCompatActivity() {
 
 
             override fun onStickerDeleted(sticker: Sticker) {
+                lockedStickers.remove(sticker.hashCode())
+
                 if (stickerView.stickerCount == 0) {
                     hideAllEditTools()
                 }
             }
 
-            override fun onStickerDragFinished(sticker: Sticker) {}
+            override fun onStickerDragFinished(sticker: Sticker) {
+                if (isStickerLocked(sticker)) return
+            }
 
-            override fun onStickerTouchedDown(sticker: Sticker) {}
+            override fun onStickerTouchedDown(sticker: Sticker) {
+                if (isStickerLocked(sticker)) return
+            }
 
             override fun onStickerZoomFinished(sticker: Sticker) {
+                if (isStickerLocked(sticker)) return
                 if (sticker is FlexibleTextSticker) {
                     val scale = sticker.getCurrentScale()
                     val newSize = (sticker.getTextSizeSp() * scale).toInt().coerceIn(8, 200)
                     sticker.setTextSizeSp(newSize)
-                    // Reset scale nhưng giữ lại vị trí/góc xoay
                     sticker.resetScaleKeepPosition()
                     if (isSizeControlVisible) {
                         updateSizeControllerFromSticker(sticker)
@@ -366,7 +618,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // THÊM: Xử lý click cho nút color - NHẤT QUÁN với size
         findViewById<ImageButton>(R.id.btn_color)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is TextSticker) {
@@ -377,11 +628,8 @@ class InvitationEditActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_Bold)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is FlexibleTextSticker) {
-                // Toggle trạng thái bold
                 val isBold = currentSticker.toggleBold()
-                // Cập nhật giao diện nút
                 updateBoldButtonState(isBold)
-                // Redraw sticker
                 stickerView.invalidate()
             }
         }
@@ -470,7 +718,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
         view.findViewById<LinearLayout>(R.id.btn_add_image).setOnClickListener {
             dialog.dismiss()
-            addImage() // Thêm phương thức addImage
+            addImage()
         }
 
         dialog.show()
@@ -501,10 +749,8 @@ class InvitationEditActivity : AppCompatActivity() {
                 }
             }
         } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == Activity.RESULT_OK) {
-            // Xử lý kết quả chọn ảnh
             data?.data?.let { uri ->
                 try {
-                    // Tạo bitmap từ URI
                     val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         val source = ImageDecoder.createSource(contentResolver, uri)
                         ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
@@ -516,7 +762,6 @@ class InvitationEditActivity : AppCompatActivity() {
                         MediaStore.Images.Media.getBitmap(contentResolver, uri)
                     }
 
-                    // Thêm bitmap vào StickerView
                     addImageSticker(bitmap)
                 } catch (e: Exception) {
                     Log.e("InvitationEditActivity", "Error loading image: ${e.message}")
@@ -546,14 +791,22 @@ class InvitationEditActivity : AppCompatActivity() {
             setText(text)
             setTextAlign(Layout.Alignment.ALIGN_CENTER)
             setTypeface(Typeface.DEFAULT)
-            setCustomTextColor(Color.GRAY) // SỬA: Dùng setCustomTextColor
-            setTextSizeSp(18) // Kích thước mặc định 18sp
+            setCustomTextColor(Color.GRAY)
+            setTextSizeSp(18)
         }
 
-        // Thêm sticker vào StickerView
+        val viewWidth = stickerView.width.toFloat()
+        val viewHeight = stickerView.height.toFloat()
+
+        val matrix = Matrix()
+        matrix.postTranslate(
+            viewWidth / 2 - textSticker.width / 2,
+            viewHeight / 2 - textSticker.height / 2
+        )
+        textSticker.setMatrix(matrix)
+
         stickerView.addSticker(textSticker)
 
-        // Hiện toolbar chỉnh sửa text
         showTextEditTools()
     }
 
@@ -566,7 +819,6 @@ class InvitationEditActivity : AppCompatActivity() {
         textToolsContainer.visibility = View.VISIBLE
         imageToolsContainer.visibility = View.GONE
 
-        // Hide size control when switching tools
         if (isSizeControlVisible) {
             hideSizeControl()
         }
@@ -578,14 +830,13 @@ class InvitationEditActivity : AppCompatActivity() {
     private fun hideAllEditTools() {
         val editToolsContainer = findViewById<LinearLayout>(R.id.edit_tools_container)
         editToolsContainer.visibility = View.GONE
-        // Hide size control
         if (isSizeControlVisible) {
             hideSizeControl()
         }
         if (isColorControlVisible) {
             hideColorControl()
         }
-        if (isAlignmentControlVisible) { // Thêm điều kiện này
+        if (isAlignmentControlVisible) {
             hideAlignmentControl()
         }
 
@@ -602,7 +853,6 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showFontSelectionBottomSheet(textSticker: TextSticker) {
-        // Get current font of the text sticker
         val currentFont = currentSelectedFont ?: FontItem("Default", "default", "System", isSystemFont = true)
 
         val bottomSheet = FontSelectionBottomSheet.newInstance(currentFont)
@@ -614,14 +864,12 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private fun applyFontToSticker(textSticker: TextSticker, fontItem: FontItem) {
         lifecycleScope.launch {
-            // Load font if needed
             val typeface = if (fontItem.typeface != null) {
                 fontItem.typeface
             } else {
                 fontManager.loadFont(fontItem)
             }
 
-            // Apply font on main thread
             runOnUiThread {
                 typeface?.let { tf ->
                     textSticker.setTypeface(tf)
@@ -638,7 +886,6 @@ class InvitationEditActivity : AppCompatActivity() {
         val fontSizeControlView = findViewById<View>(R.id.font_size_control)
 
         fontSizeControlView.setOnTouchListener { _, _ ->
-            // Luôn trả về true để chặn sự kiện chạm
             true
         }
 
@@ -656,13 +903,11 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showSizeControl(textSticker: TextSticker) {
-        // Lấy kích thước hiện tại của text
         val currentSize = getCurrentTextSize(textSticker)
         fontSizeController.setSize(currentSize)
         fontSizeController.show()
         isSizeControlVisible = true
 
-        // Cập nhật trạng thái nút Size
         updateSizeButtonState(true)
     }
 
@@ -697,7 +942,7 @@ class InvitationEditActivity : AppCompatActivity() {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getTextSizeSp()
         } else {
-            18 // Giá trị mặc định nếu không phải FlexibleTextSticker
+            18
         }
     }
 
@@ -715,20 +960,16 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Thêm phương thức setupTextColorController()
     @SuppressLint("ClickableViewAccessibility")
     private fun setupTextColorController() {
         val textColorControlView = findViewById<View>(R.id.text_color_control)
 
-        // THAY ĐỔI: Không chặn mọi sự kiện chạm nữa
-        // Để onTouchListener xử lý trong TextColorController
 
         textColorController = TextColorController(textColorControlView) { newColor ->
             applyTextColorToCurrentSticker(newColor)
         }
     }
 
-    // Thêm phương thức toggleColorControl()
     private fun toggleColorControl(textSticker: TextSticker) {
         if (isColorControlVisible) {
             hideColorControl()
@@ -859,17 +1100,15 @@ class InvitationEditActivity : AppCompatActivity() {
         val currentAlignment = if (textSticker is FlexibleTextSticker) {
             textSticker.getTextAlignment()
         } else {
-            Layout.Alignment.ALIGN_CENTER // Giá trị mặc định nếu không phải FlexibleTextSticker
+            Layout.Alignment.ALIGN_CENTER
         }
 
         textAlignmentController.setAlignmentWithoutCallback(currentAlignment)
         textAlignmentController.show()
         isAlignmentControlVisible = true
 
-        // Cập nhật trạng thái nút
         updateAlignmentButtonState(true)
 
-        // Ẩn các control khác
         if (isSizeControlVisible) {
             hideSizeControl()
         }
@@ -897,16 +1136,12 @@ class InvitationEditActivity : AppCompatActivity() {
         val currentSticker = getCurrentSticker()
         if (currentSticker is FlexibleTextSticker) {
             try {
-                // Đặt alignment mới
                 currentSticker.setTextAlign(alignment)
 
-                // Đảm bảo refreshLayout được gọi
                 currentSticker.refreshLayout()
 
-                // Force redraw sticker ngay lập tức
                 stickerView.invalidate()
 
-                // Thêm log
                 Log.d("InvitationEditActivity", "Text alignment applied successfully")
             } catch (e: Exception) {
                 Log.e("InvitationEditActivity", "Error applying text alignment", e)
@@ -926,7 +1161,6 @@ class InvitationEditActivity : AppCompatActivity() {
         val lineHeightControlView = findViewById<View>(R.id.line_height_control)
 
         lineHeightControlView.setOnTouchListener { _, _ ->
-            // Chặn sự kiện chạm để không truyền đến các view bên dưới
             true
         }
 
@@ -940,7 +1174,6 @@ class InvitationEditActivity : AppCompatActivity() {
             hideLineHeightControl()
         } else {
             if (textSticker is FlexibleTextSticker) {
-                // Log kiểm tra
                 textSticker.checkLineHeightApplied()
             }
             showLineHeightControl(textSticker)
@@ -948,16 +1181,13 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showLineHeightControl(textSticker: TextSticker) {
-        // Lấy line height hiện tại
         val currentLineHeight = getCurrentLineHeight(textSticker)
         lineHeightController.setLineHeightWithoutCallback(currentLineHeight)
         lineHeightController.show()
         isLineHeightControlVisible = true
 
-        // Cập nhật trạng thái nút Line Height
         updateLineHeightButtonState(true)
 
-        // Ẩn các control khác
         if (isSizeControlVisible) {
             hideSizeControl()
         }
@@ -988,7 +1218,7 @@ class InvitationEditActivity : AppCompatActivity() {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getLineHeightPercent()
         } else {
-            120 // Giá trị mặc định
+            120
         }
     }
 
@@ -998,13 +1228,10 @@ class InvitationEditActivity : AppCompatActivity() {
             try {
                 Log.d("InvitationEditActivity", "Applying line height: $lineHeight%")
 
-                // Đặt line height mới
                 currentSticker.setLineHeightPercent(lineHeight)
 
-                // Force redraw sticker
                 stickerView.invalidate()
 
-                // Thêm delay redraw để đảm bảo UI được cập nhật
                 Handler(Looper.getMainLooper()).postDelayed({
                     stickerView.invalidate()
                     Log.d("InvitationEditActivity", "Redraw after delay")
@@ -1024,7 +1251,6 @@ class InvitationEditActivity : AppCompatActivity() {
         val letterSpacingControlView = findViewById<View>(R.id.letter_spacing_control)
 
         letterSpacingControlView.setOnTouchListener { _, _ ->
-            // Chặn sự kiện chạm
             true
         }
 
@@ -1042,16 +1268,13 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showLetterSpacingControl(textSticker: TextSticker) {
-        // Lấy letter spacing hiện tại
         val currentSpacing = getCurrentLetterSpacing(textSticker)
         letterSpacingController.setLetterSpacingWithoutCallback(currentSpacing)
         letterSpacingController.show()
         isLetterSpacingControlVisible = true
 
-        // Cập nhật trạng thái nút
         updateLetterSpacingButtonState(true)
 
-        // Ẩn các control khác
         if (isSizeControlVisible) {
             hideSizeControl()
         }
@@ -1085,7 +1308,7 @@ class InvitationEditActivity : AppCompatActivity() {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getLetterSpacing()
         } else {
-            0f // Giá trị mặc định
+            0f
         }
     }
 
@@ -1095,13 +1318,10 @@ class InvitationEditActivity : AppCompatActivity() {
             try {
                 Log.d("InvitationEditActivity", "Applying letter spacing: $spacing")
 
-                // Đặt spacing mới
                 currentSticker.setLetterSpacing(spacing)
 
-                // Force redraw
                 stickerView.invalidate()
 
-                // Đặt một handler để vẽ lại sau một khoảng thời gian nhỏ (đề phòng)
                 Handler(Looper.getMainLooper()).postDelayed({
                     stickerView.invalidate()
                 }, 50)
@@ -1113,7 +1333,6 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Thêm phương thức cập nhật trạng thái nút Uppercase
     private fun updateUppercaseButtonState(isActive: Boolean) {
         val btnUppercase = findViewById<TextView>(R.id.btn_Uppercase)
         if (isActive) {
@@ -1194,7 +1413,7 @@ class InvitationEditActivity : AppCompatActivity() {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getCurveAngle()
         } else {
-            0f // Giá trị mặc định
+            0f
         }
     }
 
@@ -1212,25 +1431,19 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Trong InvitationEditActivity
     private fun duplicateCurrentTextSticker(originalSticker: FlexibleTextSticker) {
         try {
             Log.d("InvitationEditActivity", "Starting text duplicate process")
 
-            // Chỉ tạo duplicate với thuộc tính copy
             val offsetX = 20f
             val offsetY = 20f
             val duplicateSticker = originalSticker.createDuplicate(offsetX, offsetY)
 
-            // Lưu lại matrix dùng cho duplicate
             val duplicateMatrix = Matrix(duplicateSticker.matrix)
 
-            // Thêm vào StickerView (có thể sẽ thay đổi matrix)
             stickerView.addSticker(duplicateSticker)
 
-            // *** QUAN TRỌNG: ÁP DỤNG LẠI MATRIX SAU KHI THÊM ***
             stickerView.post {
-                // Áp dụng lại matrix sau khi sticker đã được thêm vào view
                 duplicateSticker.setMatrix(duplicateMatrix)
 
                 hideAllStickerBorders()
@@ -1243,26 +1456,21 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // *** THÊM METHOD TÍNH SMART OFFSET ***
     private fun calculateSmartOffset(sticker: FlexibleTextSticker): Pair<Float, Float> {
         try {
-            // Lấy bounds của sticker hiện tại
             val realBoundsField = TextSticker::class.java.getDeclaredField("realBounds")
             realBoundsField.isAccessible = true
             val realBounds = realBoundsField.get(sticker) as Rect
 
-            // Lấy matrix để tính kích thước thực tế sau transform
             val matrix = sticker.matrix
             val values = FloatArray(9)
             matrix.getValues(values)
             val scaleX = values[Matrix.MSCALE_X]
             val scaleY = values[Matrix.MSCALE_Y]
 
-            // Tính kích thước thực tế
             val actualWidth = realBounds.width() * Math.abs(scaleX)
             val actualHeight = realBounds.height() * Math.abs(scaleY)
 
-            // *** OFFSET THÔNG MINH: 30% kích thước sticker + minimum 40px ***
             val offsetX = Math.max(actualWidth * 0.3f, 40f)
             val offsetY = Math.max(actualHeight * 0.3f, 40f)
 
@@ -1272,27 +1480,20 @@ class InvitationEditActivity : AppCompatActivity() {
 
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error calculating smart offset: ${e.message}")
-            // Fallback to smaller default offset
             return Pair(40f, 40f)
         }
     }
 
-    // Version có animation smooth hơn:
 
     private fun duplicateCurrentTextStickerWithAnimation(originalSticker: FlexibleTextSticker) {
         try {
-            // Tạo duplicate
             val duplicateSticker = originalSticker.createDuplicate(80f, 80f)
 
-            // Add với animation
             stickerView.addSticker(duplicateSticker)
 
-            // Animation focus smooth
             stickerView.post {
-                // Fade out current border
                 hideAllStickerBorders()
 
-                // Delay một chút rồi focus vào duplicate
                 Handler(Looper.getMainLooper()).postDelayed({
                     focusOnDuplicateSticker(duplicateSticker)
                 }, 100)
@@ -1305,21 +1506,16 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private fun focusOnDuplicateSticker(duplicateSticker: FlexibleTextSticker) {
         try {
-            // *** SET DUPLICATE STICKER LÀM CURRENT STICKER ***
             val handlingStickerField = StickerView::class.java.getDeclaredField("handlingSticker")
             handlingStickerField.isAccessible = true
             handlingStickerField.set(stickerView, duplicateSticker)
 
-            // *** HIỂN THỊ BORDER CHO DUPLICATE ***
             duplicateSticker.setShowBorder(true)
 
-            // *** UPDATE UI CONTROLS THEO DUPLICATE ***
             updateUIControlsFromSticker(duplicateSticker)
 
-            // *** SHOW TEXT EDIT TOOLS ***
             showTextEditTools()
 
-            // *** FORCE REDRAW ***
             stickerView.invalidate()
 
             Log.d("InvitationEditActivity", "Duplicate sticker focused successfully")
@@ -1331,22 +1527,18 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private fun updateUIControlsFromSticker(sticker: FlexibleTextSticker) {
         try {
-            // *** UPDATE SIZE CONTROLLER NẾU ĐANG HIỂN THỊ ***
             if (isSizeControlVisible) {
                 updateSizeControllerFromSticker(sticker)
             }
 
-            // *** UPDATE CURVED TEXT CONTROLLER NẾU ĐANG HIỂN THỊ ***
             if (isCurvedTextControlVisible) {
                 curvedTextController.setCurveAngleWithoutCallback(sticker.getCurveAngle())
             }
 
-            // *** UPDATE ALIGNMENT CONTROLLER NẾU ĐANG HIỂN THỊ ***
             if (isAlignmentControlVisible) {
                 textAlignmentController.setAlignmentWithoutCallback(sticker.getTextAlignment())
             }
 
-            // *** UPDATE BUTTON STATES ***
             updateBoldButtonState(sticker.isBold())
             updateItalicButtonState(sticker.isItalic())
             updateUppercaseButtonState(sticker.isUppercase())
@@ -1358,58 +1550,77 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // 1. Triển khai phương thức addImage()
     private fun addImage() {
-        // Kiểm tra quyền dựa trên phiên bản Android
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+ sử dụng quyền đặc biệt cho ảnh
             if (checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.READ_MEDIA_IMAGES), REQUEST_STORAGE_PERMISSION)
                 return
             }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // Android 6-12 sử dụng quyền storage chung
             if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQUEST_STORAGE_PERMISSION)
                 return
             }
         }
 
-        // Nếu đã có quyền, mở trình chọn ảnh
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, REQUEST_PICK_IMAGE)
     }
-    // 3. Thêm phương thức tạo và thêm image sticker
     private fun addImageSticker(bitmap: Bitmap) {
         try {
-            // Tạo drawable từ bitmap
             val drawable = BitmapDrawable(resources, bitmap)
 
-            // Tạo image sticker
-            val sticker = DrawableSticker(drawable)
+            val imageElement = TemplateElement.ImageElement(
+                id = "user_added_image_${System.currentTimeMillis()}",
+                zIndex = stickerView.stickerCount + 1,
+                bounds = RectF(0f, 0f, bitmap.width.toFloat(), bitmap.height.toFloat()),
+                isEditable = true,
+                isVisible = true,
+                rotation = 0f,
+                scaleX = 1f,
+                scaleY = 1f,
+                pivotX = 0.5f,
+                pivotY = 0.5f,
+                bitmap = bitmap,
+                isUserReplaceable = true
+            )
 
-            // Thêm vào StickerView
+            val sticker = LockableDrawableSticker(drawable)
+
+            val viewWidth = stickerView.width.toFloat()
+            val viewHeight = stickerView.height.toFloat()
+
+            val scale = Math.min(
+                viewWidth * 0.7f / bitmap.width,
+                viewHeight * 0.7f / bitmap.height
+            )
+
+            val matrix = Matrix()
+            matrix.postScale(scale, scale)
+            matrix.postTranslate(
+                (viewWidth - bitmap.width * scale) / 2,
+                (viewHeight - bitmap.height * scale) / 2
+            )
+
+            sticker.setMatrix(matrix)
+
             stickerView.addSticker(sticker)
 
-            // Hiển thị công cụ chỉnh sửa ảnh
             showImageEditTools()
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error adding image sticker: ${e.message}")
         }
     }
 
-    // 4. Phương thức hiển thị công cụ chỉnh sửa ảnh
     private fun showImageEditTools() {
         val editToolsContainer = findViewById<LinearLayout>(R.id.edit_tools_container)
         val textToolsContainer = findViewById<HorizontalScrollView>(R.id.text_tools_container)
         val imageToolsContainer = findViewById<HorizontalScrollView>(R.id.image_tools_container)
 
-        // Hiển thị container chính và container công cụ ảnh
         editToolsContainer.visibility = View.VISIBLE
         textToolsContainer.visibility = View.GONE
         imageToolsContainer.visibility = View.VISIBLE
 
-        // Reset trạng thái khóa khi hiển thị công cụ ảnh
         isImageLocked = false
         try {
             findViewById<ImageButton>(R.id.btn_lockImage)?.let {
@@ -1419,7 +1630,6 @@ class InvitationEditActivity : AppCompatActivity() {
             Log.e("ImageEditing", "Error updating lock button: ${e.message}")
         }
 
-        // Ẩn các control khác nếu đang hiển thị
         if (isSizeControlVisible) {
             hideSizeControl()
         }
@@ -1453,7 +1663,6 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun setupImageEditingTools() {
-        // Xử lý nút xóa ảnh
         findViewById<ImageButton>(R.id.btn_delete_image)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
@@ -1462,7 +1671,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút lật ảnh
         findViewById<ImageButton>(R.id.btn_flipImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
@@ -1470,7 +1678,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút xoay ảnh
         findViewById<ImageButton>(R.id.btn_rotateImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
@@ -1482,7 +1689,6 @@ class InvitationEditActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_zoomImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
-                // Đây chỉ là demo, bạn có thể thay thế bằng một slider hoặc control riêng
                 Toast.makeText(this, "Chức năng zoom ảnh đang được phát triển", Toast.LENGTH_SHORT).show()
             }
         }
@@ -1495,27 +1701,21 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút remove background
         findViewById<TextView>(R.id.btn_removeBackgroundImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
                 Toast.makeText(this, "Chức năng xóa nền đang được phát triển", Toast.LENGTH_SHORT).show()
             }
         }
-// Trong setupImageEditingTools() thêm:
         findViewById<ImageButton>(R.id.btn_lockImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
-                // Toggle trạng thái khóa
                 isImageLocked = !isImageLocked
 
-                // Đặt trạng thái khóa/mở khóa
-                setImageManipulationLocked(isImageLocked)
+                lockSticker(currentSticker, isImageLocked)
 
-                // Cập nhật giao diện nút
                 updateLockButtonState(isImageLocked)
 
-                // Thông báo cho người dùng
                 val message = if (isImageLocked)
                     "Đã khóa zoom và xoay ảnh"
                 else
@@ -1526,10 +1726,8 @@ class InvitationEditActivity : AppCompatActivity() {
 
     }
 
-    // Phương thức lật ảnh
     private fun flipImageSticker(sticker: Sticker) {
         try {
-            // Lật ảnh theo chiều ngang
             val matrix = Matrix(sticker.matrix)
             matrix.preScale(-1f, 1f, sticker.width / 2f, sticker.height / 2f)
             sticker.setMatrix(matrix)
@@ -1539,55 +1737,60 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Phương thức xoay ảnh với trục xoay chính xác
     private fun rotateImageSticker(sticker: Sticker, degrees: Float) {
         try {
-            // Lấy các điểm góc của sticker
             val mappedBoundPoints = sticker.getMappedBoundPoints()
 
-            // Tính toán tâm thực sự từ các điểm góc sau các biến đổi
+
             var sumX = 0f
             var sumY = 0f
             for (i in 0 until mappedBoundPoints.size step 2) {
                 sumX += mappedBoundPoints[i]
                 sumY += mappedBoundPoints[i + 1]
             }
-            val centerX = sumX / 4  // Chia cho 4 vì có 4 điểm góc
+            val centerX = sumX / 4
             val centerY = sumY / 4
 
             Log.d("ImageRotation", "Rotating around calculated center: ($centerX, $centerY)")
 
-            // Xoay matrix quanh tâm thực tế
             val matrix = Matrix(sticker.matrix)
             matrix.postRotate(degrees, centerX, centerY)
 
-            // Áp dụng matrix mới
             sticker.setMatrix(matrix)
 
-            // Vẽ lại
             stickerView.invalidate()
         } catch (e: Exception) {
             Log.e("InvitationEditActivity", "Error rotating image: ${e.message}", e)
         }
     }
 
-    // Phương thức đặt trạng thái khóa cho ảnh
-    private fun setImageManipulationLocked(locked: Boolean) {
-        val currentSticker = getCurrentSticker()
-        if (currentSticker != null && currentSticker !is TextSticker) {
-            // Cài đặt trạng thái khóa cho sticker hiện tại
-            // Lưu ý: Đây là phương pháp đơn giản, bạn có thể triển khai phức tạp hơn
-            // bằng cách sử dụng reflection để can thiệp vào controller của StickerView
 
-            // Trong tình huống thực tế, có thể cần triển khai lớp StickerView tùy chỉnh
-            // để hỗ trợ tính năng này tốt hơn
-            if (locked) {
-                Toast.makeText(this, "Chỉ có thể di chuyển ảnh, không thể zoom/xoay", Toast.LENGTH_SHORT).show()
+
+    private fun lockSticker(sticker: Sticker, locked: Boolean) {
+        when (sticker) {
+            is LockableDrawableSticker -> sticker.isLocked = locked
+            else -> {
+                val stickerId = sticker.hashCode()
+                if (locked) {
+                    lockedStickers[stickerId] = true
+                } else {
+                    lockedStickers.remove(stickerId)
+                }
             }
+        }
+
+        stickerView.invalidate()
+    }
+
+
+    private fun isStickerLocked(sticker: Sticker): Boolean {
+        return when {
+            sticker is LockableDrawableSticker && sticker.isLocked -> true
+            lockedStickers.containsKey(sticker.hashCode()) -> true
+            else -> false
         }
     }
 
-    // Cập nhật trạng thái nút khóa
     private fun updateLockButtonState(isLocked: Boolean) {
         val btnLock = findViewById<ImageButton>(R.id.btn_lockImage)
         if (isLocked) {
@@ -1597,5 +1800,10 @@ class InvitationEditActivity : AppCompatActivity() {
             btnLock?.setImageResource(R.drawable.ic_unlock) // Cần tạo resource này
             btnLock?.clearColorFilter()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        svgTemplateLoader.destroy()
     }
 }

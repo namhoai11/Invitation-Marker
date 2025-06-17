@@ -54,4 +54,19 @@ dependencies {
     // For downloading fonts
     implementation ("com.squareup.okhttp3:okhttp:4.12.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+
+    // Retrofit
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+
+// Gson converter cho Retrofit
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Thư viện xử lý file PSD
+    implementation ("com.twelvemonkeys.imageio:imageio-psd:3.8.2")
+    implementation ("org.apache.commons:commons-imaging:1.0-alpha2")
+
+    // Thêm AndroidSVG - thư viện tốt nhất để xử lý SVG trên Android
+    implementation("com.caverock:androidsvg-aar:1.4")
+
+    implementation ("com.google.mlkit:text-recognition:16.0.0")
 }
