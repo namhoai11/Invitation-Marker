@@ -20,7 +20,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.text.Layout
-import android.text.TextPaint
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -50,7 +49,6 @@ import com.example.invitationcard.ui.invitation_edit.edit_text.linewidth.LetterS
 import com.example.invitationcard.utils.FlexibleTextSticker
 import com.example.invitationcard.utils.FontManager
 import com.example.invitationcard.utils.LockableDrawableSticker
-import com.example.invitationcard.utils.PsdParser
 import com.example.invitationcard.utils.SvgTemplateLoader
 import com.example.invitationcard.utils.TemplateRenderer
 import com.xiaopo.flying.sticker.DrawableSticker
@@ -93,7 +91,7 @@ class InvitationEditActivity : AppCompatActivity() {
 
     private var isImageLocked = false
 
-    private lateinit var psdParser: PsdParser
+//    private lateinit var psdParser: PsdParser
     private lateinit var templateRenderer: TemplateRenderer
     private var backgroundStickerRef: LockableDrawableSticker? = null
 
@@ -115,7 +113,6 @@ class InvitationEditActivity : AppCompatActivity() {
             insets
         }
 
-        // Xử lý click nút Add (+)
         findViewById<View>(R.id.btn_add).setOnClickListener {
             showAddItemDialog()
         }
@@ -147,7 +144,6 @@ class InvitationEditActivity : AppCompatActivity() {
                     }
                 } catch (e: Exception) {
                     Log.e("InvitationEditActivity", "Lỗi khi kiểm tra file template", e)
-                    // Tạo template trống nếu có lỗi
                     loadTestSvgTemplate(viewWidth, viewHeight)
                 }
             }
@@ -160,17 +156,14 @@ class InvitationEditActivity : AppCompatActivity() {
             if (width > 0 && height > 0 && (width != oldRight - oldLeft || height != oldBottom - oldTop)) {
                 Log.d("InvitationEditActivity", "StickerView layout changed: ${width}x${height}")
 
-                // Chỉ tải template trống nếu chưa có sticker nào
                 if (stickerView.stickerCount == 0) {
                     loadTestSvgTemplate(width, height)
                 }
             }
         }
 
-        // Thêm vào cuối onCreate của InvitationEditActivity
         fontManager.checkFontsAvailability()
 
-        // Thiết lập các controller (không thay đổi)
         setupFontSizeController()
         setupTextColorController()
         setupTextAlignmentController()
@@ -281,27 +274,6 @@ class InvitationEditActivity : AppCompatActivity() {
                 stickerView.addSticker(backgroundSticker, 0)
                 Log.d("TemplateLoading", "Đã thêm background trống")
 
-//                // Thêm text hướng dẫn đơn giản
-//                val helpText = FlexibleTextSticker(this@InvitationEditActivity).apply {
-//                    setText("Nhấn nút + để thêm văn bản hoặc hình ảnh")
-//                    setTextAlign(Layout.Alignment.ALIGN_CENTER)
-//                    setTypeface(Typeface.DEFAULT)
-//                    setCustomTextColor(Color.GRAY)
-//                    setTextSizeSp(16)
-//                }
-//
-//                // Định vị ở giữa màn hình
-//                val matrix = Matrix()
-//                matrix.postTranslate(
-//                    (viewWidth / 2 - helpText.width / 2).toFloat(),
-//                    (viewHeight / 2 - helpText.height / 2).toFloat()
-//                )
-//                helpText.setMatrix(matrix)
-//
-//                // Thêm text vào StickerView
-//                stickerView.addSticker(helpText)
-
-                // Force redraw
                 stickerView.invalidate()
 
             } catch (e: Exception) {
@@ -311,84 +283,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
     }
-
-    private fun loadPsdTemplate(templatePath: String) {
-        lifecycleScope.launch {
-            try {
-                // Xóa tất cả stickers hiện tại
-                stickerView.removeAllStickers()
-
-                // Phân tích file PSD
-                val (elements, background, dimensions) = psdParser.parsePsdFromAssets(templatePath)
-
-                Log.d("InvitationEditActivity", "Loaded template with ${elements.size} elements")
-
-                // QUAN TRỌNG: Sắp xếp elements theo zIndex trước khi tạo sticker
-                val sortedElements = elements.sortedBy { it.zIndex }
-
-                // Tạo và thêm stickers từ elements đã sắp xếp
-                val stickers = mutableListOf<Sticker>()
-                for (element in sortedElements) {
-                    try {
-                        val sticker = templateRenderer.createStickerFromElement(element)
-                        if (sticker != null) {
-                            // Khóa các phần tử không thể chỉnh sửa
-                            if (!element.isEditable && sticker is LockableDrawableSticker) {
-                                sticker.isLocked = true
-                            }
-
-                            stickers.add(sticker)
-                            stickerView.addSticker(sticker)
-
-                            // Log để debug
-                            when (element) {
-                                is TemplateElement.TextElement -> {
-                                    Log.d("InvitationEditActivity", "Added text sticker: '${element.text}', bounds: ${element.bounds}")
-                                }
-                                is TemplateElement.ImageElement -> {
-                                    Log.d("InvitationEditActivity", "Added image sticker: ${element.id}, bounds: ${element.bounds}")
-                                }
-                                else -> {
-                                    Log.d("InvitationEditActivity", "Added other sticker: ${element.id}, bounds: ${element.bounds}")
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        Log.e("InvitationEditActivity", "Error creating sticker for element ${element.id}", e)
-                    }
-                }
-
-                // Đặt background nếu có và không đã được thêm vào elements
-                if (background != null && !elements.any { it.id == "background" }) {
-                    val backgroundDrawable = BitmapDrawable(resources, background)
-                    val backgroundSticker = LockableDrawableSticker(backgroundDrawable)
-
-                    // Căn chỉnh để phủ toàn màn hình
-                    val matrix = Matrix()
-                    val viewWidth = stickerView.width.toFloat()
-                    val viewHeight = stickerView.height.toFloat()
-                    val translateX = (viewWidth - background.width) / 2
-                    val translateY = (viewHeight - background.height) / 2
-                    matrix.setTranslate(translateX, translateY)
-
-                    backgroundSticker.setMatrix(matrix)
-                    backgroundSticker.isLocked = true
-
-                    // Thêm vào đầu tiên để ở dưới cùng
-                    stickerView.addSticker(backgroundSticker, 0)
-                    backgroundStickerRef = backgroundSticker
-                }
-
-                Log.d("InvitationEditActivity", "Template loaded successfully with ${stickers.size} stickers")
-
-            } catch (e: Exception) {
-                Log.e("InvitationEditActivity", "Error loading PSD template", e)
-                Toast.makeText(this@InvitationEditActivity,
-                    "Failed to load template: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setupBackgroundTouchListener() {
@@ -639,11 +533,8 @@ class InvitationEditActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_Italic)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is FlexibleTextSticker) {
-                // Toggle trạng thái italic
                 val isItalic = currentSticker.toggleItalic()
-                // Cập nhật giao diện nút
                 updateItalicButtonState(isItalic)
-                // Redraw sticker
                 stickerView.invalidate()
             }
         }
@@ -671,11 +562,8 @@ class InvitationEditActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_Uppercase)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker is FlexibleTextSticker) {
-                // Toggle trạng thái uppercase
                 val isUppercase = currentSticker.toggleUppercase()
-                // Cập nhật giao diện nút
                 updateUppercaseButtonState(isUppercase)
-                // Redraw sticker
                 stickerView.invalidate()
             }
         }
@@ -795,16 +683,6 @@ class InvitationEditActivity : AppCompatActivity() {
             setCustomTextColor(Color.GRAY)
             setTextSizeSp(18)
         }
-
-        val viewWidth = stickerView.width.toFloat()
-        val viewHeight = stickerView.height.toFloat()
-
-        val matrix = Matrix()
-        matrix.postTranslate(
-            viewWidth / 2 - textSticker.width / 2,
-            viewHeight / 2 - textSticker.height / 2
-        )
-        textSticker.setMatrix(matrix)
 
         stickerView.addSticker(textSticker)
 
@@ -980,11 +858,9 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showColorControl(textSticker: TextSticker) {
-        // Kiểm tra type và lấy màu hiện tại
         val currentColor = getCurrentTextColor(textSticker)
         textColorController.setColor(currentColor)
 
-        // Đặt chiều cao TRƯỚC khi hiển thị
         val textColorControlView = findViewById<View>(R.id.text_color_control)
         val params = textColorControlView.layoutParams
         params.height = ViewGroup.LayoutParams.WRAP_CONTENT
@@ -995,20 +871,17 @@ class InvitationEditActivity : AppCompatActivity() {
 
         updateColorButtonState(true)
 
-        // Ẩn size control nếu đang hiển thị
         if (isSizeControlVisible) {
             hideSizeControl()
         }
     }
 
-    // Thêm phương thức hideColorControl()
     private fun hideColorControl() {
         textColorController.hide()
         isColorControlVisible = false
         updateColorButtonState(false)
     }
 
-    // Thêm phương thức updateColorButtonState()
     private fun updateColorButtonState(isActive: Boolean) {
         val btnColor = findViewById<ImageButton>(R.id.btn_color)
         if (isActive) {
@@ -1019,27 +892,13 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
 
-    // NHẤT QUÁN: Chấp nhận TextSticker và kiểm tra type bên trong
     private fun getCurrentTextColor(textSticker: TextSticker): Int {
         return if (textSticker is FlexibleTextSticker) {
             textSticker.getCustomTextColor()
         } else {
-            Color.BLACK // Màu mặc định cho TextSticker thường
+            Color.BLACK
         }
     }
-
-    // THÊM: Phương thức updateColorControllerFromSticker
-//    private fun updateColorControllerFromSticker(sticker: Sticker) {
-//        try {
-//            if (sticker is FlexibleTextSticker && isColorControlVisible) {
-//                val currentColor = sticker.getCustomTextColor()
-//                textColorController.setColor(currentColor)
-//                Log.d("InvitationEditActivity", "Updated color controller to: #${Integer.toHexString(currentColor)}")
-//            }
-//        } catch (e: Exception) {
-//            Log.e("InvitationEditActivity", "Error updating color controller", e)
-//        }
-//    }
 
     private fun applyTextColorToCurrentSticker(color: Int) {
         val currentSticker = getCurrentSticker()
@@ -1055,7 +914,6 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Cập nhật trạng thái nút Bold
     private fun updateBoldButtonState(isActive: Boolean) {
         val btnBold = findViewById<TextView>(R.id.btn_Bold)
         if (isActive) {
@@ -1067,7 +925,6 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-    // Cập nhật trạng thái nút Italic
     private fun updateItalicButtonState(isActive: Boolean) {
         val btnItalic = findViewById<TextView>(R.id.btn_Italic)
         if (isActive) {
@@ -1097,7 +954,6 @@ class InvitationEditActivity : AppCompatActivity() {
     }
 
     private fun showAlignmentControl(textSticker: TextSticker) {
-        // Lấy căn lề hiện tại
         val currentAlignment = if (textSticker is FlexibleTextSticker) {
             textSticker.getTextAlignment()
         } else {
@@ -1485,26 +1341,6 @@ class InvitationEditActivity : AppCompatActivity() {
         }
     }
 
-
-    private fun duplicateCurrentTextStickerWithAnimation(originalSticker: FlexibleTextSticker) {
-        try {
-            val duplicateSticker = originalSticker.createDuplicate(80f, 80f)
-
-            stickerView.addSticker(duplicateSticker)
-
-            stickerView.post {
-                hideAllStickerBorders()
-
-                Handler(Looper.getMainLooper()).postDelayed({
-                    focusOnDuplicateSticker(duplicateSticker)
-                }, 100)
-            }
-
-        } catch (e: Exception) {
-            Log.e("InvitationEditActivity", "Error in animated duplicate: ${e.message}", e)
-        }
-    }
-
     private fun focusOnDuplicateSticker(duplicateSticker: FlexibleTextSticker) {
         try {
             val handlingStickerField = StickerView::class.java.getDeclaredField("handlingSticker")
@@ -1686,7 +1522,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút zoom
         findViewById<TextView>(R.id.btn_zoomImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
@@ -1694,7 +1529,6 @@ class InvitationEditActivity : AppCompatActivity() {
             }
         }
 
-        // Xử lý nút filter
         findViewById<TextView>(R.id.btn_filterImage)?.setOnClickListener {
             val currentSticker = getCurrentSticker()
             if (currentSticker != null && currentSticker !is TextSticker) {
