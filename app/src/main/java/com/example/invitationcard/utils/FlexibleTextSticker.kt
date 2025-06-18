@@ -430,7 +430,7 @@ class FlexibleTextSticker(private val context: Context) : TextSticker(context) {
         this.matrix.mapPoints(oldCenter)
 
         // 2. Lưu lại góc xoay hiện tại
-        val angle = getCurrentAngle()
+        val angle = super.getCurrentAngle()
 
         // 3. Reset matrix
         this.matrix.reset()
