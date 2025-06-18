@@ -2,13 +2,18 @@ package com.example.invitationcard.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.RectF
+import android.text.Layout
 import android.util.Log
 import com.caverock.androidsvg.SVG
 import com.example.invitationcard.model.TemplateElement
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileInputStream
 
 /**
  * Lớp tải và xử lý template SVG
@@ -23,6 +28,7 @@ class SvgTemplateLoader(
     }
 
     private val textRecognitionHelper = TextRecognitionHelper()
+    private val pathTextExtractor = SvgPathTextExtractor(context)
 
     suspend fun loadSvgTemplateFromAssets(fileName: String): Triple<List<TemplateElement>, Bitmap?, Pair<Int, Int>> =
         withContext(Dispatchers.IO) {
@@ -31,68 +37,70 @@ class SvgTemplateLoader(
             var dimensions = Pair(0, 0)
 
             try {
-                Log.d(TAG, "Loading SVG template: $fileName")
-
-                // Đọc nội dung SVG
                 val svgContent = getSvgContentFromAssets(fileName)
+                val extractor = SvgBaseImageExtractor(context)
+                val processedSvg = svgContent?.let { extractor.extractImagesToFiles(it) } ?: ""
+                val inputStream = File(context.cacheDir, "temp_${System.currentTimeMillis()}.svg").apply {
+                    writeText(processedSvg)
+                }.inputStream()
 
-                // Log thông tin SVG để debug
-                if (svgContent != null) {
-                    Log.d(TAG, "SVG content preview (first 500 chars): ${svgContent.take(500)}...")
-                    Log.d(TAG, "SVG contains <text> elements: ${svgContent.contains("<text")}")
-                    Log.d(TAG, "SVG contains <image> elements: ${svgContent.contains("<image")}")
-                    Log.d(TAG, "SVG contains <g> elements: ${svgContent.contains("<g ")}")
-                    Log.d(TAG, "SVG contains <path> elements: ${svgContent.contains("<path")}")
-                }
-
-                // Tải SVG để render
-                val inputStream = context.assets.open(fileName)
                 val svg = SVG.getFromInputStream(inputStream)
+                dimensions = Pair(svg.documentWidth.toInt(), svg.documentHeight.toInt())
 
-                // Lấy kích thước SVG
-                val width = svg.documentWidth.toInt()
-                val height = svg.documentHeight.toInt()
-                dimensions = Pair(width, height)
-                Log.d(TAG, "SVG dimensions: ${width}x${height}")
-
-                // Tạo background bitmap từ SVG
+                // Thử render SVG
                 background = renderSvgToBackground(svg)
 
-                // Thêm background SVG như một phần tử không chỉnh sửa được
-                elements.add(TemplateElement.SvgElement(
-                    id = "background",
-                    zIndex = 0,
-                    bounds = RectF(0f, 0f, svg.documentWidth, svg.documentHeight),
-                    isEditable = false,
-                    isVisible = true,
-                    svgContent = svgContent ?: "",
-                    assetPath = fileName,
-                    isInteractive = false
-                ))
-
-                // Phát hiện text trong bitmap bằng ML Kit OCR
-                background?.let { bitmap ->
-                    try {
-                        val textElements = textRecognitionHelper.detectText(bitmap)
-                        Log.d(TAG, "OCR detected ${textElements.size} text elements")
-                        elements.addAll(textElements)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error during text recognition", e)
-                    }
+                // Nếu SVG render thất bại, dùng hình ảnh Base64 trực tiếp
+                if (background == null || background.getPixel(0, 0) == Color.TRANSPARENT) {
+                    Log.w(TAG, "SVG render failed, falling back to Base64 image")
+                    val imagePath = extractor.getLastExtractedImagePath()
+                    background = imagePath?.let { BitmapFactory.decodeFile(it) }
                 }
 
-                // Đóng input stream
-                inputStream.close()
+                background?.let { bitmap ->
+                    elements.add(TemplateElement.ImageElement(
+                        id = "background",
+                        zIndex = 0,
+                        bounds = RectF(0f, 0f, svg.documentWidth, svg.documentHeight),
+                        isEditable = false,
+                        isVisible = true,
+                        bitmap = bitmap,
+                        isUserReplaceable = false,
+                        localImagePath = extractor.getLastExtractedImagePath()
+                    ))
+                }
 
-                Log.d(TAG, "Parsed SVG successfully: ${elements.size} elements found")
+                inputStream.close()
             } catch (e: Exception) {
-                Log.e(TAG, "Error parsing SVG template: ${e.message}", e)
-                // Khi có lỗi, trả về danh sách elements rỗng, background null
+                Log.e(TAG, "Error loading SVG template: ${e.message}", e)
             }
 
             Triple(elements, background, dimensions)
         }
 
+    /**
+     * Kiểm tra xem SVG có thể tách thành các thành phần riêng biệt hay không
+     */
+    private fun canExtractSvgComponents(svgContent: String, containsBase64: Boolean): Boolean {
+        // Nếu SVG chứa Base64 quá lớn, không nên tách
+        if (containsBase64 && svgContent.length > 100000) {
+            Log.d(TAG, "SVG with large Base64 content - not suitable for component extraction")
+            return false
+        }
+
+        // SVG có phần tử text rõ ràng
+        val hasText = svgContent.contains("<text")
+
+        // SVG có đủ path có thể trích xuất thành text
+        val pathCount = "<path".toRegex().findAll(svgContent).count()
+        val potentialTextPaths = pathCount > 2 && pathCount < 100
+
+        // SVG có nhóm (group) riêng biệt
+        val hasGroups = "<g ".toRegex().findAll(svgContent).count() > 1
+
+        // Kết luận
+        return hasText || potentialTextPaths || hasGroups
+    }
     /**
      * Đọc nội dung file SVG từ assets
      */
@@ -112,7 +120,6 @@ class SvgTemplateLoader(
         try {
             val width = svg.documentWidth.toInt()
             val height = svg.documentHeight.toInt()
-
             if (width <= 0 || height <= 0) {
                 Log.e(TAG, "Invalid SVG dimensions: ${width}x${height}")
                 return null
@@ -120,9 +127,14 @@ class SvgTemplateLoader(
 
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
-            // Render SVG vào bitmap
             svg.renderToCanvas(canvas)
 
+            // Kiểm tra bitmap có dữ liệu không
+            if (bitmap.getPixel(0, 0) == Color.TRANSPARENT) {
+                Log.w(TAG, "Rendered bitmap is transparent at (0,0) - possible rendering issue")
+            } else {
+                Log.d(TAG, "SVG rendered successfully to bitmap")
+            }
             return bitmap
         } catch (e: Exception) {
             Log.e(TAG, "Error rendering SVG to background", e)

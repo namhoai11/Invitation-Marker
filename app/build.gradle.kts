@@ -69,4 +69,6 @@ dependencies {
     implementation("com.caverock:androidsvg-aar:1.4")
 
     implementation ("com.google.mlkit:text-recognition:16.0.0")
+
+    implementation ("androidx.multidex:multidex:2.0.1")
 }

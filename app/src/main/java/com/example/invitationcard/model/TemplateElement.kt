@@ -1,10 +1,12 @@
 package com.example.invitationcard.model
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.RectF
 import android.text.Layout
+import android.util.Log
 
 sealed class TemplateElement {
     // Thuộc tính chung giữ nguyên
@@ -94,7 +96,8 @@ sealed class TemplateElement {
         val placeholderColor: Int = Color.LTGRAY,
         val isUserReplaceable: Boolean = false,
         val maskShape: MaskShape = MaskShape.NONE,
-        val cornerRadius: Float = 0f
+        val cornerRadius: Float = 0f,
+        val localImagePath: String? = null
     ) : TemplateElement()
 
     // Vector element
@@ -140,11 +143,34 @@ sealed class TemplateElement {
         override val scaleY: Float = 1f,
         override val pivotX: Float = 0.5f,
         override val pivotY: Float = 0.5f,
-        val svgContent: String,
+        val svgContent: String = "", // Đổi thành rỗng mặc định
         val assetPath: String? = null,
         val tintColor: Int? = null,
-        val isInteractive: Boolean = false
-    ) : TemplateElement()
+        val isInteractive: Boolean = false,
+        val isFixedPosition: Boolean = false
+    ) : TemplateElement() {
+
+        companion object {
+            private const val TAG = "SvgElement"
+        }
+
+        /**
+         * Tải nội dung SVG từ asset path thay vì lưu trữ trong đối tượng
+         */
+        fun loadSvgContent(context: Context): String? {
+            if (assetPath == null) {
+                Log.w(TAG, "Cannot load SVG content: assetPath is null")
+                return null
+            }
+
+            return try {
+                context.assets.open(assetPath).bufferedReader().use { it.readText() }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading SVG content from $assetPath: ${e.message}", e)
+                null
+            }
+        }
+    }
 }
 // Các class hỗ trợ
 data class Shadow(

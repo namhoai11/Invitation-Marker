@@ -20,6 +20,7 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.text.Layout
+import android.text.TextPaint
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -135,7 +136,7 @@ class InvitationEditActivity : AppCompatActivity() {
             Log.d("InvitationEditActivity", "Initial StickerView dimensions: ${viewWidth}x${viewHeight}")
 
             if (viewWidth > 0 && viewHeight > 0) {
-                val templateFile = "invitation_template.svg"
+                val templateFile = "invitation_figma.svg"
                 try {
                     val files = assets.list("")
                     if (files?.contains(templateFile) == true) {

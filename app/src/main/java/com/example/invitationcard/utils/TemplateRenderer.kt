@@ -2,6 +2,7 @@ package com.example.invitationcard.utils
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
@@ -123,9 +124,24 @@ class TemplateRenderer(
     private suspend fun createImageSticker(element: TemplateElement.ImageElement): Sticker {
         // Log thông tin
         Log.d(TAG, "Creating image sticker: ${element.id}")
-        Log.d(TAG, "Image has bitmap: ${element.bitmap != null}")
 
-        val drawable = element.bitmap?.let {
+        // Cố gắng tải ảnh chất lượng cao từ đường dẫn nếu có
+        var finalBitmap = element.bitmap
+        if (element.localImagePath != null) {
+            try {
+                val loadedBitmap = BitmapFactory.decodeFile(element.localImagePath)
+                if (loadedBitmap != null) {
+                    finalBitmap = loadedBitmap
+                    Log.d(TAG, "Successfully loaded image from path: ${element.localImagePath}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load image from path: ${e.message}", e)
+            }
+        }
+
+        Log.d(TAG, "Image has bitmap: ${finalBitmap != null}")
+
+        val drawable = finalBitmap?.let {
             BitmapDrawable(context.resources, it)
         } ?: ColorDrawable(element.placeholderColor)
 
@@ -151,12 +167,22 @@ class TemplateRenderer(
     private suspend fun createSvgSticker(element: TemplateElement.SvgElement): DrawableSticker =
         withContext(Dispatchers.Default) {
             try {
-                // Parse SVG từ string hoặc asset
+                // Parse SVG từ assetPath hoặc svgContent
                 val svg = if (element.assetPath != null) {
-                    val inputStream = context.assets.open(element.assetPath)
-                    SVG.getFromInputStream(inputStream)
-                } else {
+                    // Ưu tiên sử dụng loadSvgContent nếu có assetPath
+                    val svgContent = element.loadSvgContent(context)
+                    if (svgContent != null) {
+                        SVG.getFromString(svgContent)
+                    } else {
+                        // Fallback: Đọc trực tiếp từ assets
+                        val inputStream = context.assets.open(element.assetPath)
+                        SVG.getFromInputStream(inputStream)
+                    }
+                } else if (element.svgContent.isNotEmpty()) {
+                    // Dùng svgContent nếu đã có sẵn (cho các SVG nhỏ)
                     SVG.getFromString(element.svgContent)
+                } else {
+                    throw IllegalArgumentException("No SVG content or asset path provided")
                 }
 
                 // Lấy kích thước của element bounds
