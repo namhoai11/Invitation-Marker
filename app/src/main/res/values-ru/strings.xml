@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Пригласительная Открытка</string>
+    <string name="_50_off">СКИДКА 50%</string>
+    <string name="limited_time_offer">Предложение на Ограниченное Время</string>
+    <string name="this_offer_will_expire_in">Это предложение истечет через</string>
+    <string name="days">Дни</string>
+    <string name="hours">Часы</string>
+    <string name="minutes">Минуты</string>
+    <string name="seconds">Секунды</string>
+    <string name="year_2">/год</string>
+    <string name="get_offer_now">Получить Предложение Сейчас</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Продолжая, вы соглашаетесь с нашими %s и %s. Подписка будет автоматически продлеваться. Отменить можно в любое время</string>
+    <string name="remove">Удалить</string>
+    <string name="save_free">Сохранить бесплатно</string>
+    <string name="watch_ad">(Посмотреть Рекламу)</string>
+</resources>

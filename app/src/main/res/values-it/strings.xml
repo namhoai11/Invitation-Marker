@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Biglietto d\'Invito</string>
+    <string name="_50_off">50% DI SCONTO</string>
+    <string name="limited_time_offer">Offerta a Tempo Limitato</string>
+    <string name="this_offer_will_expire_in">Questa offerta scadrà tra</string>
+    <string name="days">Giorni</string>
+    <string name="hours">Ore</string>
+    <string name="minutes">Minuti</string>
+    <string name="seconds">Secondi</string>
+    <string name="year_2">/anno</string>
+    <string name="get_offer_now">Ottieni Offerta Ora</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Continuando, accetti i nostri %s e %s. L\'abbonamento si rinnoverà automaticamente. Cancella in qualsiasi momento</string>
+    <string name="remove">Rimuovi</string>
+    <string name="save_free">Salva gratis</string>
+    <string name="watch_ad">(Guarda Pubblicità)</string>
+</resources>

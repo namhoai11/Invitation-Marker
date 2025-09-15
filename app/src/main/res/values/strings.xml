@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name">Invitation Card</string>
+    <string name="_50_off">50% OFF</string>
+    <string name="limited_time_offer">Limited Time Offer</string>
+    <string name="this_offer_will_expire_in">This offer will expire in</string>
+    <string name="days">Days</string>
+    <string name="hours">Hours</string>
+    <string name="minutes">Minutes</string>
+    <string name="seconds">Seconds</string>
+    <string name="year_2">/year</string>
+    <string name="get_offer_now">Get Offer Now</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">By continuing, you agree to our %s and %s. Subscription will auto-renew. Cancel anytime</string>
+    <string name="remove">Remove</string>
+    <string name="save_free">Save free</string>
+    <string name="watch_ad">(Watch Ad)</string>
 </resources>

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Einladungskarte</string>
+    <string name="_50_off">50% RABATT</string>
+    <string name="limited_time_offer">Zeitlich begrenztes Angebot</string>
+    <string name="this_offer_will_expire_in">Dieses Angebot läuft ab in</string>
+    <string name="days">Tage</string>
+    <string name="hours">Stunden</string>
+    <string name="minutes">Minuten</string>
+    <string name="seconds">Sekunden</string>
+    <string name="year_2">/Jahr</string>
+    <string name="get_offer_now">Angebot Jetzt Sichern</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Durch Fortfahren stimmst du unseren %s und %s zu. Das Abonnement verlängert sich automatisch. Jederzeit kündbar</string>
+    <string name="remove">Entfernen</string>
+    <string name="save_free">Kostenlos speichern</string>
+    <string name="watch_ad">(Werbung ansehen)</string>
+</resources>

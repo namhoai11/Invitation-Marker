@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Thiệp Mời</string>
+    <string name="_50_off">GIẢM 50%</string>
+    <string name="limited_time_offer">Ưu Đãi Có Thời Hạn</string>
+    <string name="this_offer_will_expire_in">Ưu đãi này sẽ hết hạn trong</string>
+    <string name="days">Ngày</string>
+    <string name="hours">Giờ</string>
+    <string name="minutes">Phút</string>
+    <string name="seconds">Giây</string>
+    <string name="year_2">/năm</string>
+    <string name="get_offer_now">Nhận Ưu Đãi Ngay</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Bằng cách tiếp tục, bạn đồng ý với %s và %s của chúng tôi. Đăng ký sẽ tự động gia hạn. Hủy bất cứ lúc nào</string>
+    <string name="remove">Xóa</string>
+    <string name="save_free">Lưu miễn phí</string>
+    <string name="watch_ad">(Xem Quảng Cáo)</string>
+</resources>

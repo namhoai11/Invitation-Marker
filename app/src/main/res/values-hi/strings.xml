@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">निमंत्रण कार्ड</string>
+    <string name="_50_off">50% छूट</string>
+    <string name="limited_time_offer">सीमित समय की पेशकश</string>
+    <string name="this_offer_will_expire_in">यह ऑफर समाप्त होगा</string>
+    <string name="days">दिन</string>
+    <string name="hours">घंटे</string>
+    <string name="minutes">मिनट</string>
+    <string name="seconds">सेकंड</string>
+    <string name="year_2">/वर्ष</string>
+    <string name="get_offer_now">अभी ऑफर पाएं</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">जारी रखकर, आप हमारी %s और %s से सहमत हैं। सब्स्क्रिप्शन अपने आप नवीनीकृत होगी। कभी भी रद्द करें</string>
+    <string name="remove">हटाएं</string>
+    <string name="save_free">निःशुल्क सेव करें</string>
+    <string name="watch_ad">(विज्ञापन देखें)</string>
+</resources>

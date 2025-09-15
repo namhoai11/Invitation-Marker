@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">邀请卡</string>
+    <string name="_50_off">50% 折扣</string>
+    <string name="limited_time_offer">限时优惠</string>
+    <string name="this_offer_will_expire_in">此优惠将在以下时间后过期</string>
+    <string name="days">天</string>
+    <string name="hours">小时</string>
+    <string name="minutes">分钟</string>
+    <string name="seconds">秒</string>
+    <string name="year_2">/年</string>
+    <string name="get_offer_now">立即获取优惠</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">继续即表示您同意我们的%s和%s。订阅将自动续费。随时可取消</string>
+    <string name="remove">移除</string>
+    <string name="save_free">免费保存</string>
+    <string name="watch_ad">（观看广告）</string>
+</resources>

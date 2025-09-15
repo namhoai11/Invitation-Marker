@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Karta Zaproszenia</string>
+    <string name="_50_off">50% ZNIŻKI</string>
+    <string name="limited_time_offer">Oferta Ograniczona Czasowo</string>
+    <string name="this_offer_will_expire_in">Ta oferta wygaśnie za</string>
+    <string name="days">Dni</string>
+    <string name="hours">Godziny</string>
+    <string name="minutes">Minuty</string>
+    <string name="seconds">Sekundy</string>
+    <string name="year_2">/rok</string>
+    <string name="get_offer_now">Skorzystaj z Oferty Teraz</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Kontynuując, zgadzasz się na nasze %s i %s. Subskrypcja będzie odnawiana automatycznie. Możesz anulować w każdej chwili</string>
+    <string name="remove">Usuń</string>
+    <string name="save_free">Zapisz za darmo</string>
+    <string name="watch_ad">(Obejrzyj Reklamę)</string>
+</resources>

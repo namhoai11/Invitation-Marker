@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Carte d\'Invitation</string>
+    <string name="_50_off">50% DE RÉDUCTION</string>
+    <string name="limited_time_offer">Offre à Durée Limitée</string>
+    <string name="this_offer_will_expire_in">Cette offre expirera dans</string>
+    <string name="days">Jours</string>
+    <string name="hours">Heures</string>
+    <string name="minutes">Minutes</string>
+    <string name="seconds">Secondes</string>
+    <string name="year_2">/an</string>
+    <string name="get_offer_now">Obtenir l\'Offre Maintenant</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">En continuant, vous acceptez nos %s et %s. L\'abonnement se renouvellera automatiquement. Annulez à tout moment</string>
+    <string name="remove">Supprimer</string>
+    <string name="save_free">Sauvegarder gratuitement</string>
+    <string name="watch_ad">(Regarder Pub)</string>
+</resources>

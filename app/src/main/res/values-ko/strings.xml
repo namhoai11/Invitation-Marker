@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">초대장 카드</string>
+    <string name="_50_off">50% 할인</string>
+    <string name="limited_time_offer">기간 한정 특가</string>
+    <string name="this_offer_will_expire_in">이 특가는 다음 시간 후에 만료됩니다</string>
+    <string name="days">일</string>
+    <string name="hours">시간</string>
+    <string name="minutes">분</string>
+    <string name="seconds">초</string>
+    <string name="year_2">/년</string>
+    <string name="get_offer_now">지금 특가 받기</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">계속하면 당사의 %s 및 %s에 동의하는 것입니다. 구독은 자동 갱신됩니다. 언제든지 취소 가능</string>
+    <string name="remove">제거</string>
+    <string name="save_free">무료 저장</string>
+    <string name="watch_ad">(광고 보기)</string>
+</resources>

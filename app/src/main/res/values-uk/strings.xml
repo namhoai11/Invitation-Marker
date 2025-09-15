@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Запрошувальна Картка</string>
+    <string name="_50_off">ЗНИЖКА 50%</string>
+    <string name="limited_time_offer">Пропозиція на Обмежений Час</string>
+    <string name="this_offer_will_expire_in">Ця пропозиція закінчиться через</string>
+    <string name="days">Дні</string>
+    <string name="hours">Години</string>
+    <string name="minutes">Хвилини</string>
+    <string name="seconds">Секунди</string>
+    <string name="year_2">/рік</string>
+    <string name="get_offer_now">Отримати Пропозицію Зараз</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Продовжуючи, ви погоджуєтесь з нашими %s та %s. Підписка буде автоматично поновлюватись. Скасувати можна в будь-який час</string>
+    <string name="remove">Видалити</string>
+    <string name="save_free">Зберегти безкоштовно</string>
+    <string name="watch_ad">(Переглянути Рекламу)</string>
+</resources>

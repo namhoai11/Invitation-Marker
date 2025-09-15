@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Tarjeta de Invitación</string>
+    <string name="_50_off">50% DE DESCUENTO</string>
+    <string name="limited_time_offer">Oferta por Tiempo Limitado</string>
+    <string name="this_offer_will_expire_in">Esta oferta expirará en</string>
+    <string name="days">Días</string>
+    <string name="hours">Horas</string>
+    <string name="minutes">Minutos</string>
+    <string name="seconds">Segundos</string>
+    <string name="year_2">/año</string>
+    <string name="get_offer_now">Obtener Oferta Ahora</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Al continuar, aceptas nuestros %s y %s. La suscripción se renovará automáticamente. Cancela en cualquier momento</string>
+    <string name="remove">Eliminar</string>
+    <string name="save_free">Guardar gratis</string>
+    <string name="watch_ad">(Ver Anuncio)</string>
+</resources>

@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">بطاقة دعوة</string>
+    <string name="_50_off">خصم 50%</string>
+    <string name="limited_time_offer">عرض لفترة محدودة</string>
+    <string name="this_offer_will_expire_in">سينتهي هذا العرض خلال</string>
+    <string name="days">أيام</string>
+    <string name="hours">ساعات</string>
+    <string name="minutes">دقائق</string>
+    <string name="seconds">ثوانٍ</string>
+    <string name="year_2">/سنة</string>
+    <string name="get_offer_now">احصل على العرض الآن</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">بالمتابعة، فإنك توافق على %s و %s الخاصة بنا. سيتم تجديد الاشتراك تلقائياً. يمكن الإلغاء في أي وقت</string>
+    <string name="remove">إزالة</string>
+    <string name="save_free">حفظ مجاني</string>
+    <string name="watch_ad">(مشاهدة الإعلان)</string>
+</resources>

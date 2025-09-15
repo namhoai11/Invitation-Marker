@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Uitnodigingskaart</string>
+    <string name="_50_off">50% KORTING</string>
+    <string name="limited_time_offer">Beperkte Tijd Aanbieding</string>
+    <string name="this_offer_will_expire_in">Deze aanbieding verloopt over</string>
+    <string name="days">Dagen</string>
+    <string name="hours">Uren</string>
+    <string name="minutes">Minuten</string>
+    <string name="seconds">Seconden</string>
+    <string name="year_2">/jaar</string>
+    <string name="get_offer_now">Aanbieding Nu Pakken</string>
+    <string name="by_continuing_you_agree_to_our_terms_and_privacy_policy_subscription_will_auto_renew_cancel_anytime">Door verder te gaan, ga je akkoord met onze %s en %s. Abonnement wordt automatisch verlengd. Altijd opzegbaar</string>
+    <string name="remove">Verwijderen</string>
+    <string name="save_free">Gratis opslaan</string>
+    <string name="watch_ad">(Advertentie Bekijken)</string>
+</resources>
